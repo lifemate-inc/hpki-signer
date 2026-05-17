@@ -22,7 +22,10 @@ import (
 )
 
 const (
-	bridgeURL     = "http://127.0.0.1:14733"
+	// ブラウザに表示する URL は localhost を使用（127.0.0.1 と同じだが見た目が親しみやすい）
+	// ヘルスチェックは 127.0.0.1 を使用（DNS解決を経ない確実な確認）
+	bridgeURL     = "http://localhost:14733"
+	bridgeHealth  = "http://127.0.0.1:14733"
 	healthPath    = "/api/health"
 	startupWaitMs = 500
 	startupMaxMs  = 30000
@@ -34,10 +37,10 @@ func openBrowser(url string) error {
 	return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 }
 
-// ブリッジに /api/health で疎通確認
+// ブリッジに /api/health で疎通確認（127.0.0.1 直接アクセス）
 func isBridgeRunning() bool {
 	client := &http.Client{Timeout: 1 * time.Second}
-	resp, err := client.Get(bridgeURL + healthPath)
+	resp, err := client.Get(bridgeHealth + healthPath)
 	if err != nil {
 		return false
 	}
