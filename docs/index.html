@@ -500,10 +500,17 @@ header{
   <div style="text-align:center; margin-top:32px; padding:16px;
               font-size:.78rem; color:var(--gray-500); line-height:1.8">
     🔒 PINや書類はインターネットを通りません（あなたのPC内で完結）<br>
-    <a href="/security" style="color:var(--green-dk); text-decoration:underline">
-      セキュリティの仕組みを詳しく
-    </a>
-    <span style="margin: 0 8px">|</span>
+    <a href="/security" style="color:var(--green-dk); text-decoration:underline">セキュリティの仕組み</a>
+    <span style="margin: 0 6px">|</span>
+    <a href="#" onclick="copyDiagnostics(event)" style="color:var(--green-dk); text-decoration:underline">診断情報をコピー</a>
+    <span style="margin: 0 6px">|</span>
+    <a href="https://github.com/lifemate-inc/hpki-signer/issues/new" target="_blank" rel="noopener"
+       style="color:var(--green-dk); text-decoration:underline">フィードバック</a>
+    <br>
+    <span style="background:#fef3c7; color:#92400e; border-radius:6px; padding:2px 8px; font-weight:600">
+      🧪 ベータ版
+    </span>
+    <span style="margin: 0 4px">|</span>
     <span id="versionLabel">v —</span>
     <span id="updateBadge" style="display:none; margin-left:8px;
         background:#fef3c7; color:#92400e; border-radius:6px; padding:2px 8px;
@@ -513,6 +520,44 @@ header{
   </div>
 
 </main>
+
+<!-- ═══ β同意ダイアログ（初回起動時に表示）═══ -->
+<div id="betaConsentOverlay" style="display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; padding:20px">
+  <div style="background:#fff; max-width:560px; width:100%; border-radius:14px;
+       padding:28px; max-height:90vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <h2 style="color:var(--green-dk); margin-bottom:12px; font-size:1.3rem">
+      🧪 ベータ版のご利用にあたって
+    </h2>
+    <p style="margin-bottom:16px; line-height:1.7; color:#374151">
+      ようこそ。本ツールは現在<strong>ベータ版</strong>です。
+      ご利用前に、以下の重要事項をご確認ください。
+    </p>
+    <ul style="background:var(--green-lt); border-radius:8px; padding:14px 24px;
+         margin-bottom:16px; font-size:.92rem; line-height:1.8">
+      <li>✅ <strong>PIN・PDF・個人情報はインターネット通過しません</strong></li>
+      <li>⚠️ 動作不良の可能性があります。重要文書は事前にバックアップを</li>
+      <li>📋 詳細：<a href="https://github.com/lifemate-inc/hpki-signer/blob/main/docs/legal/consent.md"
+             target="_blank" rel="noopener" style="color:var(--green-dk)">同意書を読む</a></li>
+      <li>🐛 困ったら：右下「フィードバック」ボタン</li>
+    </ul>
+    <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;
+           padding:12px; background:#f9fafb; border-radius:8px; margin-bottom:16px">
+      <input type="checkbox" id="betaConsentCheck" style="margin-top:3px"
+        onchange="document.getElementById('betaConsentBtn').disabled = !this.checked">
+      <span style="font-size:.92rem; line-height:1.6">
+        上記を確認し、ベータ版であることを理解した上で利用します
+      </span>
+    </label>
+    <button id="betaConsentBtn" class="btn-sign" disabled
+      onclick="acceptBetaConsent()"
+      style="background:var(--green); color:#fff; padding:14px; border-radius:10px;
+        border:none; width:100%; font-size:1rem; font-weight:700; cursor:pointer;
+        opacity:.5; transition:opacity .2s">
+      同意して利用を開始
+    </button>
+  </div>
+</div>
 
 <!-- 処理中オーバーレイ -->
 <div id="signingOverlay">
@@ -958,6 +1003,43 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('beforeunload', _wipePin);
 window.addEventListener('pagehide',     _wipePin);
 
+// ── 🧪 ベータ同意ダイアログ ─────────────────────────────────────────
+function showBetaConsent() {
+  if (localStorage.getItem('betaConsent') === 'v1') return;  // 既に同意済み
+  document.getElementById('betaConsentOverlay').style.display = 'flex';
+}
+function acceptBetaConsent() {
+  localStorage.setItem('betaConsent', 'v1');
+  localStorage.setItem('betaConsentAt', new Date().toISOString());
+  document.getElementById('betaConsentOverlay').style.display = 'none';
+}
+
+// ── 🐛 診断情報をクリップボードへ ───────────────────────────────────
+async function copyDiagnostics(ev) {
+  if (ev) ev.preventDefault();
+  try {
+    const d = await api.get('/api/diagnostics');
+    const text = [
+      `=== HPKI Signer 診断情報 ===`,
+      `Version:   ${d.version}`,
+      `Time:      ${d.time}`,
+      `OS:        ${d.os}`,
+      `Python:    ${d.python}`,
+      `Arch:      ${d.arch}`,
+      `Card readers (${d.card_readers.length}): ${d.card_readers.join(', ') || '(none)'}`,
+      `PKCS#11 libs (${d.pkcs11_libs.length}):`,
+      ...d.pkcs11_libs.map(l => `  - ${l.label} [${l.type}]: ${l.path}`),
+      ``,
+      `--- bridge.log (末尾) ---`,
+      d.log_tail || '(空)',
+    ].join('\n');
+    await navigator.clipboard.writeText(text);
+    showToast('✅ 診断情報をコピーしました。メールやLINEで送ってください。');
+  } catch (e) {
+    showToast('❌ 診断情報の取得に失敗しました: ' + e.message);
+  }
+}
+
 // ── 初期化 ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   // 初期状態（未接続）
@@ -968,6 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(checkBridge, 3000);
   // アップデート確認（起動2秒後に1回だけ。ネット切れでも問題ない）
   setTimeout(checkForUpdate, 2000);
+  // ベータ同意ダイアログ（初回のみ）
+  setTimeout(showBetaConsent, 500);
 });
 </script>
 </body>

@@ -38,7 +38,7 @@ app = Flask(__name__)
 CSRF_TOKEN = secrets.token_urlsafe(32)
 
 # CSRF検証を免除するエンドポイント（読み取り専用 GET と、トークン取得用 health）
-_CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader',
+_CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader', '/api/diagnostics',
                 '/api/browse-dll', '/api/cert/download',
                 '/api/jpki-ca/download', '/api/jpki-ca/bundle', '/api/jpki-ca/identify'}
 
@@ -247,6 +247,43 @@ def health():
         'availableLibs': libs,
         # CSRFトークン: 起動ごとに変わる。ブラウザはこれを取って後続POSTで返送する。
         'csrfToken':     CSRF_TOKEN,
+    })
+
+
+@app.route('/api/diagnostics')
+def diagnostics():
+    """
+    トラブル時の診断情報を返す（PIN や PDF 内容は含まない）。
+    UI から「診断情報をコピー」ボタンで呼ばれ、結果をメール添付等で開発者へ送信できる。
+    """
+    import platform
+    log_path = BRIDGE_DIR / 'bridge.log'
+    log_tail = ''
+    log_size = 0
+    if log_path.exists():
+        log_size = log_path.stat().st_size
+        try:
+            with open(log_path, 'rb') as f:
+                f.seek(max(0, log_size - 16384))   # 末尾 16KB
+                log_bytes = f.read()
+                log_tail = log_bytes.decode('utf-8', errors='replace')
+                # PIN 漏洩防止: 念のため pin: で始まる行をマスク（通常ログには出ないが二重防御）
+                import re
+                log_tail = re.sub(r"('pin':\s*')[^']*(')", r'\1[REDACTED]\2', log_tail)
+        except Exception as e:
+            log_tail = f'(ログ取得エラー: {e})'
+
+    libs = _detect_all_libs()
+    return jsonify({
+        'version':       VERSION,
+        'time':          __import__('datetime').datetime.now().isoformat(),
+        'os':            f'{platform.system()} {platform.release()} ({platform.version()})',
+        'python':        platform.python_version(),
+        'arch':          platform.machine(),
+        'card_readers':  _list_pcsc_readers(),
+        'pkcs11_libs':   libs,
+        'log_size':      log_size,
+        'log_tail':      log_tail,
     })
 
 
