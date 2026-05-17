@@ -1,0 +1,52 @@
+venv/
+bridge/venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# ── 個人情報を含む可能性のあるファイル（絶対にコミットしない）──
+*.p12
+*.pfx
+*.pem
+*.key
+bridge/test_cert.p12
+bridge/signing_cert.cer
+bridge/signer_cert.cer
+bridge/acrobat_cms_0_0.cer
+bridge/*_signing*.cer
+bridge/*_personal*.cer
+# CA証明書（公開情報）は明示的に許可
+!bridge/jpki_sign_ca*.cer
+!bridge/medis_auth_ca.cer
+!bridge/medis_sign_ca.cer
+!bridge/mhlw_hpki_root_ca_v2.cer
+
+# ── PKCS#11 DLL（ベンダー配布、再配布NG）──
+*.dll
+
+# ── ログファイル（PIN は含まれないが念のため）──
+bridge/bridge.log
+bridge/setup.log
+*.log
+
+# ── 旧 VBS（installer に置き換え済み）──
+*.vbs
+
+# ── ビルド成果物 ──
+build/
+*.zip
+hpki-signer-setup*.exe
+installer/launcher/launcher.exe
+
+# ── ローカル開発ツール（プロジェクト内DL）──
+.tools/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.iml
+
+# ── Windows ──
+Thumbs.db
+desktop.ini

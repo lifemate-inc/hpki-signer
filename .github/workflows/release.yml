@@ -1,0 +1,103 @@
+# ════════════════════════════════════════════════════════════════════
+#  HPKI電子署名ツール — リリース自動化
+# ════════════════════════════════════════════════════════════════════
+#
+# トリガー: v1.2.3 のような tag を push したとき
+#   git tag v1.2.3 && git push --tags
+#
+# 動作:
+#   1. Windows runner で全ビルド実行 (launcher / payload / installer)
+#   2. GitHub Release を作成し、生成物をアップロード
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'バージョン番号（例: 1.2.3）'
+        required: true
+        default: '1.1.0'
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # Release 作成に必要
+
+    steps:
+      - name: ソースをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: バージョン番号を決定
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $v = '${{ github.event.inputs.version }}'
+          } else {
+            $v = '${{ github.ref_name }}' -replace '^v',''
+          }
+          echo "VERSION=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Building version: $v"
+
+      - name: Go セットアップ
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Inno Setup インストール
+        run: |
+          choco install innosetup -y --no-progress
+        shell: pwsh
+
+      - name: 全部ビルド
+        run: |
+          .\scripts\build_all.ps1 -Version "${{ steps.version.outputs.VERSION }}"
+        shell: pwsh
+
+      - name: GitHub Release を作成
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: "HPKI電子署名ツール v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## 🎉 v${{ steps.version.outputs.VERSION }}
+
+            ### ダウンロード
+            - **新規インストール**: `hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe`
+            - **手動更新（既存ユーザー）**: `payload-v${{ steps.version.outputs.VERSION }}.zip`
+
+            ### 動作環境
+            - Windows 10 / 11 (64bit)
+            - HPKIカードリーダー または マイナンバーカード対応カードリーダー
+            - Adobe Acrobat Reader（署名検証用）
+
+            ### インストール方法
+            1. `hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe` をダウンロード
+            2. ダブルクリックで起動
+            3. ウィザードに従ってインストール
+
+            ※ Windows SmartScreen で「保護されました」と出た場合は「詳細情報」→「実行」を押してください。
+          draft: false
+          prerelease: false
+          files: |
+            build/hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe
+            build/payload-v${{ steps.version.outputs.VERSION }}.zip
+
+      - name: 成果物をアーティファクトとして保存
+        uses: actions/upload-artifact@v4
+        with:
+          name: hpki-signer-${{ steps.version.outputs.VERSION }}
+          path: |
+            build/*.exe
+            build/*.zip
+          if-no-files-found: error

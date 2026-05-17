@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 🔒 セキュリティ: 外部スクリプト・iframe 等を厳格に制限 -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none';
+           script-src 'self' 'unsafe-inline';
+           style-src  'self' 'unsafe-inline';
+           img-src    'self' data:;
+           connect-src 'self' http://127.0.0.1:14733 http://localhost:14733;
+           form-action 'none';
+           frame-ancestors 'none';
+           base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>HPKI電子署名ツール</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:    #2a7dd4;
+  --green-dk: #1a5fab;
+  --green-lt: #eff6ff;
+  --green-bd: #93c5fd;
+  --teal:     #3b82f6;
+  --red:      #e05c5c;
+  --red-lt:   #fff4f4;
+  --amber:    #f59e0b;
+  --amber-lt: #fffbeb;
+  --gray-50:  #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --white:    #ffffff;
+  --radius:   16px;
+  --shadow:   0 2px 12px rgba(0,0,0,.08);
+  --font:     'Meiryo','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+}
+
+body{
+  font-family:var(--font);
+  background:linear-gradient(160deg, #e8f0ff 0%, #f0f5ff 60%, #e6f4ff 100%);
+  min-height:100vh;
+  color:var(--gray-900);
+}
+
+/* ── ヘッダー ─────────────────────────────────────────────────── */
+header{
+  background:linear-gradient(135deg, #163d7a 0%, #2a7dd4 100%);
+  color:#fff;
+  padding:0 24px;
+  height:64px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
+  position:sticky;top:0;z-index:100;
+}
+.hdr-left{display:flex;align-items:center;gap:10px}
+.hdr-icon{font-size:1.5rem}
+.hdr-title{font-size:1.05rem;font-weight:bold;letter-spacing:.03em}
+.hdr-sub{font-size:.72rem;opacity:.75;margin-top:1px}
+
+/* 接続ステータスチップ */
+.status-chip{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 14px;border-radius:20px;
+  font-size:.8rem;font-weight:bold;
+  transition:all .3s;
+}
+.status-chip.ok  {background:rgba(255,255,255,.2);color:#fff}
+.status-chip.err {background:rgba(255,100,100,.3);color:#ffd0d0}
+.status-chip.chk {background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
+.s-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.status-chip.ok  .s-dot{background:#7dd3fc;box-shadow:0 0 8px #7dd3fc}
+.status-chip.err .s-dot{background:#fca5a5}
+.status-chip.chk .s-dot{background:rgba(255,255,255,.4);animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ── メインコンテンツ ─────────────────────────────────────────── */
+.main{max-width:520px;margin:0 auto;padding:28px 16px 80px}
+
+/* ── カード ──────────────────────────────────────────────────── */
+.card{
+  background:var(--white);
+  border-radius:var(--radius);
+  padding:24px 26px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow);
+}
+
+/* ── 未接続カード ────────────────────────────────────────────── */
+#disconnCard{
+  background:linear-gradient(135deg,#fff9f0,#fff5e8);
+  border:2px solid #fcd9a0;
+  text-align:center;
+  padding:32px 24px;
+}
+.disc-emoji{font-size:3rem;margin-bottom:12px}
+.disc-title{font-size:1.1rem;font-weight:bold;color:#92400e;margin-bottom:8px}
+.disc-body{font-size:.88rem;color:#78350f;line-height:1.8}
+.disc-steps{
+  background:#fff;border-radius:12px;
+  padding:16px 20px;margin-top:16px;
+  text-align:left;list-style:none;
+}
+.disc-steps li{
+  padding:8px 0;border-bottom:1px solid #fde68a;
+  font-size:.88rem;color:var(--gray-700);
+  display:flex;align-items:center;gap:10px;
+}
+.disc-steps li:last-child{border-bottom:none}
+.step-num{
+  background:#f59e0b;color:#fff;
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.72rem;font-weight:bold;flex-shrink:0;
+}
+
+/* ── フォルダカード ──────────────────────────────────────────── */
+.card-label{
+  font-size:.78rem;font-weight:bold;
+  color:var(--green-dk);
+  margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.folder-display{
+  background:var(--green-lt);
+  border:2px solid var(--green-bd);
+  border-radius:10px;
+  padding:14px 18px;
+  display:flex;align-items:center;gap:12px;
+  cursor:pointer;
+  transition:border-color .2s,background .2s;
+}
+.folder-display:hover{border-color:var(--green);background:#dbeafe}
+.folder-icon{font-size:2rem;flex-shrink:0}
+.folder-info{flex:1;min-width:0}
+.folder-name{
+  font-size:1rem;font-weight:bold;color:var(--gray-900);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.folder-name.placeholder{color:var(--gray-400);font-weight:normal}
+.folder-count{font-size:.8rem;color:var(--green-dk);margin-top:3px;font-weight:bold}
+.folder-count.empty{color:var(--red)}
+.folder-arrow{font-size:1.2rem;color:var(--gray-400);flex-shrink:0}
+
+/* ── カード種別ピッカー ───────────────────────────────────────── */
+.card-picker{display:flex;gap:10px;flex-wrap:wrap}
+.card-pick-btn{
+  flex:1;min-width:120px;
+  padding:14px 12px;
+  border:2px solid var(--gray-200);
+  border-radius:12px;
+  background:var(--gray-50);
+  cursor:pointer;text-align:center;
+  transition:all .2s;font-family:var(--font);
+}
+.card-pick-btn:hover{border-color:var(--green);background:var(--green-lt)}
+.card-pick-btn.selected{
+  border-color:var(--green);background:var(--green-lt);
+  box-shadow:0 0 0 3px rgba(42,125,212,.15);
+}
+.card-pick-icon{font-size:1.8rem;display:block;margin-bottom:6px}
+.card-pick-label{font-size:.85rem;font-weight:bold;color:var(--gray-700);display:block}
+.card-pick-sub{font-size:.72rem;color:var(--gray-400);display:block;margin-top:2px}
+.card-pick-btn.selected .card-pick-label{color:var(--green-dk)}
+.card-no-card{
+  font-size:.88rem;color:var(--gray-500);padding:12px;
+  background:var(--gray-100);border-radius:8px;text-align:center;
+}
+
+/* ── PIN カード ──────────────────────────────────────────────── */
+.pin-wrap{position:relative;max-width:100%}
+.pin-input{
+  width:100%;padding:12px 48px 12px 16px;
+  border:2px solid var(--gray-200);border-radius:10px;
+  font-size:1rem;letter-spacing:.08em;
+  font-family:var(--font);background:var(--gray-50);
+  transition:border-color .2s,box-shadow .2s;
+}
+.pin-input:focus{
+  outline:none;
+  border-color:var(--green);
+  box-shadow:0 0 0 4px rgba(42,157,114,.12);
+  background:#fff;
+}
+.pin-toggle{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;font-size:1.1rem;
+  color:var(--gray-400);padding:4px;
+}
+.pin-hint{font-size:.77rem;color:var(--gray-400);margin-top:6px}
+
+/* ── 署名ボタン ──────────────────────────────────────────────── */
+.btn-sign{
+  width:100%;padding:20px;
+  background:linear-gradient(135deg, #2a7dd4, #1a5fab);
+  color:#fff;font-size:1.15rem;font-weight:bold;
+  font-family:var(--font);letter-spacing:.06em;
+  border:none;border-radius:14px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(42,125,212,.35);
+  transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-sign:hover:not(:disabled){
+  background:linear-gradient(135deg,#4a8fe8,#2a7dd4);
+  box-shadow:0 6px 20px rgba(42,125,212,.45);
+  transform:translateY(-1px);
+}
+.btn-sign:active:not(:disabled){transform:translateY(0)}
+.btn-sign:disabled{
+  background:linear-gradient(135deg,#9ca3af,#6b7280);
+  box-shadow:none;cursor:not-allowed;
+}
+.btn-sign-icon{font-size:1.4rem}
+
+/* ── 処理中オーバーレイ ───────────────────────────────────────── */
+#signingOverlay{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(4px);
+  z-index:500;
+  flex-direction:column;align-items:center;justify-content:center;gap:20px;
+}
+#signingOverlay.show{display:flex}
+.signing-spinner{
+  width:64px;height:64px;
+  border:5px solid #93c5fd;
+  border-top-color:var(--green);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.signing-title{font-size:1.2rem;font-weight:bold;color:var(--green-dk)}
+.signing-file{font-size:.88rem;color:var(--gray-500);max-width:300px;text-align:center}
+.signing-progress{
+  width:240px;height:8px;background:var(--gray-200);border-radius:8px;overflow:hidden;
+}
+.signing-bar{
+  height:100%;background:linear-gradient(90deg,var(--green),#7dd3fc);
+  border-radius:8px;transition:width .4s ease;width:0%;
+}
+
+/* ── 完了カード ──────────────────────────────────────────────── */
+#doneCard{display:none}
+#doneCard.show{display:block}
+.done-inner{text-align:center;padding:16px 0}
+.done-emoji{font-size:4rem;animation:pop .4s ease}
+@keyframes pop{0%{transform:scale(0)}80%{transform:scale(1.2)}100%{transform:scale(1)}}
+.done-title{font-size:1.4rem;font-weight:bold;color:var(--green-dk);margin:12px 0 6px}
+.done-sub{font-size:.9rem;color:var(--gray-500)}
+.done-count{
+  display:inline-block;
+  background:var(--green-lt);border:2px solid var(--green-bd);
+  border-radius:12px;padding:14px 28px;margin:18px 0;
+}
+.done-num{font-size:2.4rem;font-weight:bold;color:var(--green-dk);line-height:1}
+.done-lbl{font-size:.82rem;color:var(--green);margin-top:2px}
+.done-errs{
+  background:var(--red-lt);border:1px solid #fca5a5;border-radius:10px;
+  padding:12px 16px;margin-top:12px;text-align:left;
+}
+.done-errs-title{font-size:.85rem;font-weight:bold;color:var(--red);margin-bottom:6px}
+.err-item{font-size:.8rem;color:var(--gray-700);padding:4px 0;border-bottom:1px solid #fecaca}
+.err-item:last-child{border-bottom:none}
+.btn-again{
+  width:100%;padding:16px;margin-top:20px;
+  background:var(--gray-100);color:var(--gray-700);
+  font-size:.95rem;font-weight:bold;font-family:var(--font);
+  border:2px solid var(--gray-200);border-radius:12px;cursor:pointer;
+  transition:all .2s;
+}
+.btn-again:hover{background:var(--gray-200)}
+
+/* ── 詳細設定（折りたたみ） ───────────────────────────────────── */
+.adv-toggle{
+  background:none;border:none;cursor:pointer;
+  color:var(--gray-400);font-size:.8rem;font-family:var(--font);
+  padding:6px 0;display:flex;align-items:center;gap:5px;
+  width:100%;
+}
+.adv-toggle:hover{color:var(--gray-500)}
+.adv-toggle .arr{font-size:.6rem;transition:transform .2s}
+.adv-toggle.open .arr{transform:rotate(90deg)}
+.adv-body{
+  display:none;
+  margin-top:12px;padding-top:14px;
+  border-top:1px dashed var(--gray-200);
+}
+.adv-body.show{display:block}
+.adv-row{margin-bottom:12px}
+.adv-row:last-child{margin-bottom:0}
+.adv-label{
+  display:block;font-size:.77rem;font-weight:bold;
+  color:var(--gray-500);margin-bottom:5px;
+}
+.adv-input{
+  width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);
+  border-radius:8px;font-size:.85rem;font-family:var(--font);
+  background:var(--gray-50);
+  transition:border-color .15s;
+}
+.adv-input:focus{outline:none;border-color:var(--green);background:#fff}
+.adv-ig{display:flex;gap:8px}
+.adv-ig .adv-input{flex:1}
+.adv-btn{
+  padding:9px 14px;border-radius:8px;border:1.5px solid var(--gray-200);
+  background:var(--gray-50);color:var(--gray-600);
+  font-size:.8rem;font-family:var(--font);cursor:pointer;
+  white-space:nowrap;transition:background .15s;
+}
+.adv-btn:hover{background:var(--gray-100)}
+.adv-select{
+  width:100%;padding:9px 12px;border:1.5px solid var(--gray-200);
+  border-radius:8px;font-size:.85rem;font-family:var(--font);
+  background:var(--gray-50);
+}
+.adv-hint{font-size:.72rem;color:var(--gray-400);margin-top:4px;line-height:1.5}
+.adv-ck{display:flex;align-items:center;gap:8px;margin-top:4px}
+.adv-ck input{width:15px;height:15px;accent-color:var(--green);cursor:pointer}
+.adv-ck label{font-size:.82rem;cursor:pointer;color:var(--gray-600)}
+
+/* ── テストモードバナー ───────────────────────────────────────── */
+#mockBanner{
+  display:none;
+  background:var(--amber-lt);border-bottom:2px solid #fcd34d;
+  padding:10px 20px;font-size:.83rem;color:#92400e;
+  align-items:center;gap:8px;
+}
+#mockBanner.show{display:flex}
+
+/* ── トースト ─────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--gray-900);color:#fff;
+  padding:10px 22px;border-radius:24px;font-size:.84rem;
+  opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
+  white-space:nowrap;z-index:9999;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── ユーティリティ ──────────────────────────────────────────── */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-left">
+    <span class="hdr-icon">✍️</span>
+    <div>
+      <div class="hdr-title">HPKI電子署名ツール</div>
+      <div class="hdr-sub">電子署名 &amp; タイムスタンプ</div>
+    </div>
+  </div>
+  <div class="status-chip chk" id="statusChip">
+    <div class="s-dot"></div>
+    <span id="statusLabel">確認中...</span>
+  </div>
+</header>
+
+<div id="mockBanner">
+  <span>⚠️</span>
+  <span><strong>テストモード：</strong>実際のHPKIカードは使用されていません。テスト用の署名が行われます。</span>
+</div>
+
+<main class="main">
+
+  <!-- 未接続カード -->
+  <div class="card" id="disconnCard">
+    <div class="disc-emoji">🔌</div>
+    <div class="disc-title">署名ツールが起動していません</div>
+    <div class="disc-body">先にPCの署名ツールを起動してください</div>
+    <ol class="disc-steps">
+      <li><span class="step-num">1</span>デスクトップの「HPKI署名ツールを起動する」をダブルクリック</li>
+      <li><span class="step-num">2</span>ブラウザが自動で開くまで少し待つ</li>
+      <li><span class="step-num">3</span>このページを再読み込み（F5キー）</li>
+    </ol>
+  </div>
+
+  <!-- メインフォーム -->
+  <div id="mainForm">
+
+    <!-- フォルダ選択 -->
+    <div class="card">
+      <div class="card-label">📁 署名するPDFが入っているフォルダ</div>
+      <div class="folder-display" id="folderDisplay" onclick="pickFolder()">
+        <span class="folder-icon">📂</span>
+        <div class="folder-info">
+          <div class="folder-name placeholder" id="folderName">タップして選んでください</div>
+          <div class="folder-count" id="folderCount"></div>
+        </div>
+        <span class="folder-arrow">›</span>
+      </div>
+    </div>
+
+    <!-- カード種別選択 -->
+    <div class="card" id="cardPickerCard">
+      <div class="card-label">💳 使用するカードの種類</div>
+      <div class="card-picker" id="cardPicker">
+        <div class="card-no-card">⏳ 確認中...</div>
+      </div>
+      <!-- 手動DLL入力（折りたたみ、上級者向け） -->
+      <div style="margin-top:10px">
+        <button class="adv-toggle" id="dllToggle" onclick="toggleDllInput()"
+                style="font-size:.75rem;color:var(--gray-400)">
+          <span class="arr" id="dllArr">▶</span> カスタムDLLを直接指定する
+        </button>
+        <div id="dllInputBody" style="display:none;margin-top:8px">
+          <div class="adv-ig">
+            <input type="text" id="pkcs11Lib" class="adv-input"
+              placeholder="DLLのパスを入力..." oninput="onDllManual()">
+            <button class="adv-btn" onclick="browseDll()">参照...</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIN入力 -->
+    <div class="card">
+      <div class="card-label">🔑 カードのPIN番号</div>
+      <div class="pin-wrap">
+        <input type="password" id="pin" class="pin-input"
+          placeholder="••••••"
+          autocomplete="off" autocorrect="off" autocapitalize="off"
+          spellcheck="false" data-form-type="other"
+          oninput="updateBtn()">
+        <button class="pin-toggle" onclick="togglePin()" title="表示/非表示">👁</button>
+      </div>
+      <div class="pin-hint" id="pinHint">HPKIカードに設定したPINを入力してください</div>
+    </div>
+
+    <!-- 署名開始ボタン -->
+    <button class="btn-sign" id="signBtn" onclick="startSigning()" disabled>
+      <span class="btn-sign-icon">✍️</span>
+      <span>署名を開始する</span>
+    </button>
+
+    <!-- 詳細設定 -->
+    <div class="card" style="margin-top:16px">
+      <button class="adv-toggle" id="advToggle" onclick="toggleAdv()">
+        <span class="arr">▶</span>
+        詳細設定（通常は変更不要です）
+      </button>
+      <div class="adv-body" id="advBody">
+
+        <!-- TSA -->
+        <div class="adv-row">
+          <label class="adv-label">タイムスタンプ局（TSA）</label>
+          <select class="adv-select" id="tsaSelect" onchange="onTsaSelect()">
+            <option value="http://ts.ssl.com">SSL.com（推奨）</option>
+            <option value="http://timestamp.digicert.com">DigiCert</option>
+            <option value="http://timestamp.comodoca.com/rfc3161">Sectigo / Comodo</option>
+            <option value="">タイムスタンプなし</option>
+            <option value="__custom__">カスタム...</option>
+          </select>
+          <input type="text" id="tsaUrl" class="adv-input hidden"
+            placeholder="https://..." style="margin-top:6px" oninput="autoSave()">
+        </div>
+
+        <!-- 出力設定 -->
+        <div class="adv-row">
+          <label class="adv-label">出力ファイル名のサフィックス</label>
+          <input type="text" id="suffix" class="adv-input" value="_signed"
+            style="max-width:180px" oninput="autoSave()">
+          <div class="adv-hint">例: 書類.pdf → 書類_signed.pdf</div>
+        </div>
+        <div class="adv-row">
+          <div class="adv-ck">
+            <input type="checkbox" id="overwrite" onchange="onOverwrite();autoSave()">
+            <label for="overwrite">元のPDFを署名済みで上書きする</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mainForm -->
+
+  <!-- 完了カード -->
+  <div class="card" id="doneCard">
+    <div class="done-inner">
+      <div class="done-emoji" id="doneEmoji">✅</div>
+      <div class="done-title" id="doneTitle">署名が完了しました！</div>
+      <div class="done-sub" id="doneSub"></div>
+      <div class="done-count">
+        <div class="done-num" id="doneNum">0</div>
+        <div class="done-lbl">件のPDFに署名しました</div>
+      </div>
+      <div id="doneErrArea"></div>
+      <button class="btn-again" onclick="resetUI()">🔄 もう一度署名する</button>
+    </div>
+  </div>
+
+  <!-- フッター: セキュリティ情報・ヘルプリンク -->
+  <div style="text-align:center; margin-top:32px; padding:16px;
+              font-size:.78rem; color:var(--gray-500); line-height:1.8">
+    🔒 PINや書類はインターネットを通りません（あなたのPC内で完結）<br>
+    <a href="/security" style="color:var(--green-dk); text-decoration:underline">
+      セキュリティの仕組みを詳しく
+    </a>
+    <span style="margin: 0 8px">|</span>
+    <span id="versionLabel">v —</span>
+    <span id="updateBadge" style="display:none; margin-left:8px;
+        background:#fef3c7; color:#92400e; border-radius:6px; padding:2px 8px;
+        font-weight:600; cursor:pointer"
+        onclick="openUpdateLink()"
+        title="クリックでリリースページを開く"></span>
+  </div>
+
+</main>
+
+<!-- 処理中オーバーレイ -->
+<div id="signingOverlay">
+  <div class="signing-spinner"></div>
+  <div class="signing-title">署名しています...</div>
+  <div class="signing-file" id="signingFile">準備中</div>
+  <div class="signing-progress">
+    <div class="signing-bar" id="signingBar"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+const BRIDGE = 'http://127.0.0.1:14733';
+const STORAGE_KEY = 'hpki_v2';
+
+let S = {
+  connected: false,
+  mock: false,
+  cardType: 'hpki',
+  dirHandle: null,
+  files: [],
+  signing: false,
+};
+
+// ── API ───────────────────────────────────────────────────────
+// CSRFトークン：/api/health で取得し、全POSTで送り返す。
+// ブリッジを再起動するたびに変わるので、毎回 health を呼ぶ。
+let CSRF_TOKEN = '';
+const api = {
+  async get(path) {
+    const r = await fetch(BRIDGE + path, { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    if (path === '/api/health' && d.csrfToken) CSRF_TOKEN = d.csrfToken;
+    return d;
+  },
+  async post(path, body) {
+    // CSRFトークン未取得なら先に取りに行く
+    if (!CSRF_TOKEN) { try { await api.get('/api/health'); } catch {} }
+    const r = await fetch(BRIDGE + path, {
+      method:'POST',
+      headers:{
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(60000),
+    });
+    const d = await r.json();
+    if (r.status === 403 && (d.error || '').includes('CSRF')) {
+      // トークン期限切れ（ブリッジ再起動など）→ 取り直して1回だけ再送
+      CSRF_TOKEN = '';
+      await api.get('/api/health');
+      return api.post(path, body);
+    }
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    return d;
+  },
+};
+
+// ── カード種別ピッカー ────────────────────────────────────────
+const CARD_ICONS = { hpki: '🏥', jpki: '💳' };
+const PIN_HINTS  = {
+  hpki: 'HPKIカードに設定したPINを入力してください',
+  jpki: 'マイナンバーカードの署名用PINを入力してください（英数字6〜16桁）',
+  mock: 'テストモードではPINは使用されません（何でも入力してください）',
+};
+
+function renderCardPicker(libs) {
+  const container = document.getElementById('cardPicker');
+  if (!libs || libs.length === 0) {
+    container.innerHTML = '<div class="card-no-card">⚠️ カードドライバーが見つかりません。<br>セットアップを確認してください。</div>';
+    return;
+  }
+  // パスをdata属性に入れることでバックスラッシュのエスケープ問題を回避
+  container.innerHTML = '';
+  libs.forEach((lib, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'card-pick-btn' + (i === 0 ? ' selected' : '');
+    btn.dataset.path = lib.path;
+    btn.dataset.type = lib.type;
+    btn.innerHTML = `<span class="card-pick-icon">${CARD_ICONS[lib.type] || '💳'}</span>
+      <span class="card-pick-label">${lib.label}</span>`;
+    btn.addEventListener('click', () => selectCard(btn.dataset.path, btn.dataset.type, btn));
+    container.appendChild(btn);
+  });
+
+  // 先頭を初期選択
+  selectCard(libs[0].path, libs[0].type, null);
+}
+
+function selectCard(path, type, btn) {
+  // 選択状態を更新
+  document.querySelectorAll('.card-pick-btn').forEach(b => b.classList.remove('selected'));
+  if (btn) btn.classList.add('selected');
+
+  // DLL パスをセット（内部値）
+  document.getElementById('pkcs11Lib').value = path;
+  S.cardType = type;
+  autoSave();
+
+  // PIN ヒントを切り替え
+  document.getElementById('pinHint').textContent =
+    S.mock ? PIN_HINTS.mock : (PIN_HINTS[type] || PIN_HINTS.hpki);
+}
+
+function toggleDllInput() {
+  const body = document.getElementById('dllInputBody');
+  const arr  = document.getElementById('dllArr');
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  arr.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+function onDllManual() {
+  // 手動入力されたら全ボタンの選択を外す
+  document.querySelectorAll('.card-pick-btn').forEach(b => b.classList.remove('selected'));
+  autoSave();
+}
+
+// ── ブリッジ接続確認 ──────────────────────────────────────────
+async function checkBridge() {
+  try {
+    const d = await api.get('/api/health');
+    if (!S.connected || S.mock !== d.mockMode) {
+      S.connected = true; S.mock = d.mockMode;
+      renderCardPicker(d.availableLibs || []);
+      onConnect(d);
+    }
+    // バージョン表示
+    if (d.version) {
+      document.getElementById('versionLabel').textContent = 'v' + d.version;
+    }
+  } catch {
+    if (S.connected) { S.connected = false; onDisconnect(); }
+  }
+}
+
+// アップデート確認（バックグラウンドで1回だけ）
+let _updateUrl = null;
+async function checkForUpdate() {
+  try {
+    const d = await api.get('/api/check-update');
+    if (d && d.updateAvailable) {
+      _updateUrl = d.releaseUrl;
+      const badge = document.getElementById('updateBadge');
+      badge.textContent = `🎉 v${d.latest} 公開中`;
+      badge.style.display = 'inline-block';
+    }
+  } catch (_) { /* ネット切れ等は無視 */ }
+}
+function openUpdateLink() {
+  if (_updateUrl) window.open(_updateUrl, '_blank');
+}
+
+function onConnect(d = {}) {
+  const chip = document.getElementById('statusChip');
+  const lbl  = document.getElementById('statusLabel');
+  chip.className = 'status-chip ok';
+  lbl.textContent = S.mock ? 'テストモード' : '準備できています ✅';
+  document.getElementById('disconnCard').classList.add('hidden');
+  document.getElementById('mainForm').classList.remove('hidden');
+  document.getElementById('mockBanner').classList.toggle('show', S.mock);
+  document.getElementById('pinHint').textContent =
+    S.mock ? PIN_HINTS.mock : (PIN_HINTS[S.cardType] || PIN_HINTS.hpki);
+  updateBtn();
+}
+
+function onDisconnect() {
+  const chip = document.getElementById('statusChip');
+  const lbl  = document.getElementById('statusLabel');
+  chip.className = 'status-chip err';
+  lbl.textContent = 'ツールが起動していません';
+  document.getElementById('disconnCard').classList.remove('hidden');
+  document.getElementById('mainForm').classList.add('hidden');
+  document.getElementById('mockBanner').classList.remove('show');
+}
+
+// ── フォルダ選択 ──────────────────────────────────────────────
+async function pickFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('このブラウザには対応していません。Chrome または Edge をお使いください。');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    S.dirHandle = handle;
+    S.files = [];
+    for await (const [name, h] of handle.entries()) {
+      if (h.kind === 'file' && /\.pdf$/i.test(name)) S.files.push({ name, handle: h });
+    }
+    S.files.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    document.getElementById('folderName').textContent = handle.name;
+    document.getElementById('folderName').classList.remove('placeholder');
+    const countEl = document.getElementById('folderCount');
+    if (S.files.length > 0) {
+      countEl.textContent = `📄 ${S.files.length}件のPDFが見つかりました`;
+      countEl.className = 'folder-count';
+    } else {
+      countEl.textContent = 'PDFファイルが見つかりません';
+      countEl.className = 'folder-count empty';
+    }
+    updateBtn();
+  } catch(e) {
+    if (e.name !== 'AbortError') showToast('フォルダの選択に失敗しました');
+  }
+}
+
+// ── DLL参照 ───────────────────────────────────────────────────
+async function browseDll() {
+  try {
+    const d = await (await fetch(BRIDGE + '/api/browse-dll')).json();
+    if (d.path) { document.getElementById('pkcs11Lib').value = d.path; autoSave(); }
+  } catch { showToast('署名ツールに接続できません'); }
+}
+
+// ── ボタン有効化 ──────────────────────────────────────────────
+function updateBtn() {
+  document.getElementById('signBtn').disabled =
+    !S.connected || S.files.length === 0 || S.signing;
+}
+
+// ── PIN表示切り替え ───────────────────────────────────────────
+function togglePin() {
+  const el = document.getElementById('pin');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+// ── 詳細設定 ──────────────────────────────────────────────────
+function toggleAdv() {
+  document.getElementById('advToggle').classList.toggle('open');
+  document.getElementById('advBody').classList.toggle('show');
+}
+function onTsaSelect() {
+  const sel = document.getElementById('tsaSelect');
+  const inp = document.getElementById('tsaUrl');
+  if (sel.value === '__custom__') { inp.classList.remove('hidden'); inp.focus(); }
+  else inp.classList.add('hidden');
+  autoSave();
+}
+function getActiveTsaUrl() {
+  const sel = document.getElementById('tsaSelect');
+  return sel.value === '__custom__'
+    ? document.getElementById('tsaUrl').value.trim()
+    : sel.value;
+}
+function onOverwrite() {
+  document.getElementById('suffix').disabled = document.getElementById('overwrite').checked;
+}
+
+// ── 設定保存 ──────────────────────────────────────────────────
+function autoSave() {
+  const s = {
+    tsaPreset: document.getElementById('tsaSelect').value,
+    tsaCustom: document.getElementById('tsaUrl').value,
+    pkcs11Lib: document.getElementById('pkcs11Lib').value,
+    suffix:    document.getElementById('suffix').value,
+    overwrite: document.getElementById('overwrite').checked,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+}
+function loadSettings() {
+  let s; try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'); } catch { s=null; }
+  if (!s) return;
+  const sel = document.getElementById('tsaSelect');
+  if (s.tsaPreset !== undefined) {
+    const exists = Array.from(sel.options).some(o => o.value === s.tsaPreset);
+    sel.value = exists ? s.tsaPreset : '__custom__';
+    if (sel.value === '__custom__') {
+      document.getElementById('tsaUrl').classList.remove('hidden');
+      document.getElementById('tsaUrl').value = s.tsaCustom || s.tsaPreset || '';
+    }
+  }
+  if (s.pkcs11Lib) document.getElementById('pkcs11Lib').value = s.pkcs11Lib;
+  if (s.suffix)    document.getElementById('suffix').value    = s.suffix;
+  if (s.overwrite !== undefined) {
+    document.getElementById('overwrite').checked = s.overwrite;
+    onOverwrite();
+  }
+}
+
+// ── 署名処理 ──────────────────────────────────────────────────
+async function startSigning() {
+  const pinInput = document.getElementById('pin');
+  let pin = pinInput.value;
+  const over = document.getElementById('overwrite').checked;
+  const suf  = document.getElementById('suffix').value.trim() || '_signed';
+
+  if (!S.mock && !pin) { showToast('PINを入力してください'); return; }
+  if (S.files.length === 0) { showToast('フォルダを選択してください'); return; }
+
+  // 🔒 PINセキュリティ：取り出した直後に入力欄をクリア（DOMからもブラウザ履歴からも消す）
+  pinInput.value = '';
+
+  S.signing = true;
+  document.getElementById('mainForm').classList.add('hidden');
+  document.getElementById('doneCard').classList.remove('show');
+  showOverlay(true);
+  updateBtn();
+
+  const total = S.files.length;
+  let ok = 0;
+  const errs = [];
+
+  try {
+    const sess = await api.post('/api/session/start', {
+      pin,
+      pkcs11Lib:  document.getElementById('pkcs11Lib').value.trim(),
+      slotNo:     0,
+      keyLabel:   '',
+      certLabel:  '',
+      tsaUrl:     getActiveTsaUrl(),
+    });
+    // 🔒 ブリッジに送信完了したらJS変数からもPINを抹消
+    pin = null;
+
+    for (let i = 0; i < total; i++) {
+      const { name, handle } = S.files[i];
+      setOverlayProgress(Math.round(i/total*100), `${name}`, `${i+1} / ${total}件`);
+      try {
+        const file    = await handle.getFile();
+        const bytes   = new Uint8Array(await file.arrayBuffer());
+        const res     = await api.post('/api/sign', { pdf: toB64(bytes) });
+        const outName = over ? name : name.replace(/\.pdf$/i, suf + '.pdf');
+        const out     = await S.dirHandle.getFileHandle(outName, { create: true });
+        const w       = await out.createWritable();
+        await w.write(fromB64(res.signed));
+        await w.close();
+        ok++;
+      } catch(e) {
+        errs.push({ name: `${name}：${translatePkcs11Error(e.message)}`, msg: e.message });
+      }
+    }
+  } catch(e) {
+    errs.push({ name: translatePkcs11Error(e.message), msg: e.message });
+  } finally {
+    try { await api.post('/api/session/end', {}); } catch {}
+  }
+
+  showOverlay(false);
+  S.signing = false;
+  showResult(total, ok, errs);
+}
+
+// ── PKCS#11 エラーを日本語に変換 ─────────────────────────────
+function translatePkcs11Error(msg) {
+  if (!msg) return '不明なエラーが発生しました';
+  const m = msg.toLowerCase();
+  if (m.includes('pinincorrect') || m.includes('pin_incorrect'))
+    return S.cardType === 'jpki'
+      ? '❌ PINが違います（署名用PIN：英数字6〜16桁）'
+      : '❌ PINが違います。HPKIカードのPINを確認してください。';
+  if (m.includes('pinlocked') || m.includes('pin_locked'))
+    return '🔒 PINがロックされています。カード発行元にお問い合わせください。';
+  if (m.includes('tokennotpresent') || m.includes('token_not_present'))
+    return '💳 カードが認識できません。カードリーダーを確認してください。';
+  if (m.includes('functionfailed') || m.includes('function_failed'))
+    return '⚠️ カードの操作に失敗しました。カードを抜き差ししてから再度お試しください。';
+  if (m.includes('sessionhandleinvalid') || m.includes('session'))
+    return '⚠️ カードとの接続が切れました。もう一度「署名を開始する」を押してください。';
+  if (m.includes('timeout'))
+    return '⏱ 時間がかかりすぎました。もう一度お試しください。';
+  // 上記以外はそのまま（技術情報として）
+  return `❌ エラー：${msg}`;
+}
+
+function showOverlay(on) {
+  document.getElementById('signingOverlay').classList.toggle('show', on);
+}
+function setOverlayProgress(pct, file, label) {
+  document.getElementById('signingFile').textContent = file + '　' + label;
+  document.getElementById('signingBar').style.width  = pct + '%';
+}
+
+function showResult(total, ok, errs) {
+  const card = document.getElementById('doneCard');
+  card.classList.add('show');
+
+  const allOk = errs.length === 0;
+  document.getElementById('doneEmoji').textContent  = allOk ? '✅' : '⚠️';
+  document.getElementById('doneTitle').textContent  = allOk ? '署名が完了しました！' : '一部の署名に失敗しました';
+  document.getElementById('doneSub').textContent    =
+    new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('doneNum').textContent    = ok;
+
+  const errArea = document.getElementById('doneErrArea');
+  errArea.innerHTML = '';
+  if (errs.length > 0) {
+    const box = document.createElement('div');
+    box.className = 'done-errs';
+    box.innerHTML = `<div class="done-errs-title">⚠️ エラーが発生したファイル（${errs.length}件）</div>`;
+    errs.forEach(e => {
+      const it = document.createElement('div');
+      it.className = 'err-item';
+      it.textContent = e.name;   // 翻訳済みメッセージ
+      box.appendChild(it);
+    });
+    errArea.appendChild(box);
+  }
+}
+
+function resetUI() {
+  S.signing = false;
+  S.files = [];
+  S.dirHandle = null;
+  document.getElementById('folderName').textContent = 'タップして選んでください';
+  document.getElementById('folderName').classList.add('placeholder');
+  document.getElementById('folderCount').textContent = '';
+  document.getElementById('pin').value = '';
+  document.getElementById('doneCard').classList.remove('show');
+  document.getElementById('mainForm').classList.remove('hidden');
+  updateBtn();
+}
+
+// ── ユーティリティ ────────────────────────────────────────────
+function toB64(u8) {
+  let s=''; for(let i=0;i<u8.length;i++) s+=String.fromCharCode(u8[i]);
+  return btoa(s);
+}
+function fromB64(b64) {
+  const bin=atob(b64); const u8=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); return u8;
+}
+let _toastT=null;
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── 🔒 PIN セキュリティ・グローバルガード ─────────────────────────────
+// タブを隠す／離脱する際に PIN を強制クリア（メモリ・DOMの両方）
+function _wipePin() {
+  const el = document.getElementById('pin');
+  if (el) el.value = '';
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _wipePin();
+});
+window.addEventListener('beforeunload', _wipePin);
+window.addEventListener('pagehide',     _wipePin);
+
+// ── 初期化 ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // 初期状態（未接続）
+  document.getElementById('mainForm').classList.add('hidden');
+  document.getElementById('doneCard').classList.remove('show');
+  loadSettings();
+  checkBridge();
+  setInterval(checkBridge, 3000);
+  // アップデート確認（起動2秒後に1回だけ。ネット切れでも問題ない）
+  setTimeout(checkForUpdate, 2000);
+});
+</script>
+</body>
+</html>

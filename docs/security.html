@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none';
+           script-src 'self' 'unsafe-inline';
+           style-src  'self' 'unsafe-inline';
+           img-src    'self' data:;
+           connect-src 'self' http://127.0.0.1:14733 http://localhost:14733;
+           form-action 'none';
+           frame-ancestors 'none';
+           base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>セキュリティについて | HPKI電子署名ツール</title>
+<style>
+  :root {
+    --blue:    #2a7dd4;
+    --blue-dk: #1a5fab;
+    --blue-lt: #eff6ff;
+    --green:   #16a34a;
+    --green-lt:#f0fdf4;
+    --amber-lt:#fffbeb;
+    --gray:    #6b7280;
+    --gray-lt: #f3f4f6;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;
+    background:#f0f5ff;
+    color:#1a2845;
+    line-height:1.75;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+  header{text-align:center;margin-bottom:24px}
+  header h1{font-size:1.4rem;color:var(--blue-dk)}
+  header p{color:var(--gray);font-size:.92rem;margin-top:4px}
+  .card{
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 2px 16px rgba(0,80,160,.08);
+    padding:24px;
+    margin-bottom:16px;
+  }
+  h2{
+    color:var(--blue-dk);
+    font-size:1.1rem;
+    border-bottom:2px solid var(--blue-lt);
+    padding-bottom:8px;
+    margin-bottom:16px;
+  }
+  p{margin-bottom:12px}
+  ul{margin:8px 0 12px 24px}
+  li{margin-bottom:6px}
+  .keyword{
+    display:inline-block;
+    background:var(--blue-lt);
+    color:var(--blue-dk);
+    padding:2px 8px;
+    border-radius:6px;
+    font-weight:600;
+    font-size:.85rem;
+  }
+  .ok{
+    background:var(--green-lt);
+    border-left:4px solid var(--green);
+    padding:14px 16px;
+    border-radius:6px;
+    margin:10px 0;
+  }
+  .warn{
+    background:var(--amber-lt);
+    border-left:4px solid #f59e0b;
+    padding:14px 16px;
+    border-radius:6px;
+    margin:10px 0;
+  }
+  pre{
+    background:#1e293b;
+    color:#e2e8f0;
+    border-radius:8px;
+    padding:14px;
+    font-size:.85rem;
+    overflow-x:auto;
+    margin:8px 0;
+  }
+  .diagram{
+    background:#fafbff;
+    border:1.5px solid var(--blue-lt);
+    border-radius:10px;
+    padding:14px 16px;
+    font-family:'Consolas','Menlo',monospace;
+    font-size:.78rem;
+    line-height:1.6;
+    color:#334155;
+    white-space:pre;
+    overflow-x:auto;
+    margin:8px 0;
+  }
+  .home{
+    display:inline-block;
+    margin-top:16px;
+    padding:10px 20px;
+    background:var(--blue);
+    color:#fff;
+    text-decoration:none;
+    border-radius:8px;
+    font-weight:600;
+  }
+  .home:hover{background:var(--blue-dk)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <h1>🔒 このツールのセキュリティについて</h1>
+  <p>大切な情報がどう守られているか、わかりやすく説明します。</p>
+</header>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>① PIN番号は絶対にネットを通りません</h2>
+  <p>
+    一番大切なことは、<strong>あなたが入力したPIN番号は、あなたのパソコンの外に絶対に出ない</strong> ということです。
+  </p>
+  <div class="diagram">
+あなたのパソコンの中だけで完結 ─────────────────
+                                             │
+  [ブラウザ]                                  │
+   ↓ ① PIN入力                              │
+   ↓ ② 自分のPCの中の「ブリッジ」へ送る     │
+                                             │
+  [ブリッジ] (127.0.0.1)                    │
+   ↓ ③ PCに刺さったカードリーダーへ        │
+                                             │
+  [カード（HPKI / マイナンバー）]            │
+                                             │
+─────────────────────────────────────────────┘
+
+           ↑
+           ↑ インターネット（PINはここを通らない）
+           ↑
+
+  [GitHub Pages]
+   ・最初に画面（HTML）をダウンロードするだけ
+   ・PIN や PDF は一切送られない
+  </div>
+  <div class="ok">
+    ✅ <strong>結論：</strong> PIN番号は「あなたのPCの中」だけで使われます。<br>
+    インターネット越しに送信される瞬間はゼロです。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>② <span class="keyword">CORS</span> って何？（看護師さん向け説明）</h2>
+  <p>
+    <span class="keyword">CORS</span>（コルス）は <strong>「どのWebサイトが、私たちのブリッジに話しかけてよいか」</strong> を決めるルールです。
+  </p>
+  <p>例えるなら、訪問看護ステーションの入口の「<strong>受付名簿</strong>」のようなものです：</p>
+  <ul>
+    <li>名簿に名前がある人だけ、中に入って話せる</li>
+    <li>知らない人がドアをノックしても、自動で追い返す</li>
+  </ul>
+  <p>
+    このツールでは、<strong>あなたの GitHub Pages</strong> と <strong>あなた自身のパソコン (localhost)</strong> だけが名簿に載っています。<br>
+    悪意のあるWebサイト（例：怪しいメールから開いたページ）が、勝手にあなたのブリッジに話しかけて PDF を勝手に署名させようとしても、<strong>ブリッジが「あなた知らない人ですよね」と拒否します</strong>。
+  </p>
+  <div class="ok">
+    ✅ <strong>設定ファイル：</strong> <code>bridge/allowed_origins.txt</code><br>
+    ここに書かれた URL だけが受付名簿に載っています。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>③ <span class="keyword">CSRFトークン</span> って何？</h2>
+  <p>
+    たとえ「受付名簿」に名前があっても、本人かどうかを確かめる<strong>「合言葉」</strong>が必要 — それが CSRF トークンです。
+  </p>
+  <p>仕組み：</p>
+  <ul>
+    <li>ブリッジを起動するたびに、新しいランダムな合言葉が作られる</li>
+    <li>あなたのブラウザは、最初に合言葉を受け取る</li>
+    <li>署名するときは、毎回その合言葉を一緒に送る</li>
+    <li>合言葉が違うと、ブリッジは「あなたじゃないですね」と拒否</li>
+  </ul>
+  <p>
+    これにより、もし悪意のあるサイトが何らかの方法でブリッジに侵入しようとしても、<strong>合言葉を知らないので何もできません</strong>。
+  </p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>④ PINがブラウザに残らないようにする工夫</h2>
+  <ul>
+    <li>PIN入力欄は「<strong>パスワード型</strong>」: 画面には ●●●● と表示</li>
+    <li><strong>ブラウザの自動保存・自動入力を無効化</strong>（autocomplete=off）</li>
+    <li>署名ボタンを押した瞬間、<strong>入力欄を空にする</strong></li>
+    <li>ブリッジに送信完了後、<strong>JavaScript変数からもPINを消す</strong></li>
+    <li>タブを切り替える・閉じる際にも自動でクリア</li>
+  </ul>
+  <div class="ok">
+    ✅ PIN番号は、必要な「ほんの一瞬」だけメモリ上にあり、用が済んだら消えます。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>⑤ ログファイル (bridge.log) について</h2>
+  <p>
+    ブリッジは動作記録（ログ）を <code>bridge/bridge.log</code> に書き出しています。<br>
+    このログには、<strong>署名証明書の情報・処理時刻・エラー内容</strong>などが記録されますが、
+    <strong>PIN番号は一切書かれません</strong>。
+  </p>
+  <div class="warn">
+    ⚠️ <strong>もし不安なら：</strong> <code>bridge/bridge.log</code> をテキストエディタで開いて、PIN が含まれていないことを直接確認できます。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<div class="card">
+  <h2>⑥ 万が一の備え：何が起きたら危ないか</h2>
+  <p>このツールを安全に使うために、以下のことに気をつけてください：</p>
+  <ul>
+    <li>🚫 <strong>知らない人にPCを触らせない</strong><br>
+        PCにログインできる人なら、bridge.log を読んだり PIN を入力できます。
+    </li>
+    <li>🚫 <strong>怪しいUSB・拡張機能をインストールしない</strong><br>
+        ブラウザ拡張機能はPIN入力欄を盗み見れます。
+    </li>
+    <li>🚫 <strong>業務用PCで関係ないWebサイトを開かない</strong><br>
+        悪意のあるサイトはCORS/CSRFで防いでいますが、最初から開かないのが一番安全。
+    </li>
+    <li>✅ <strong>カードリーダーから物理カードを抜く</strong><br>
+        署名作業が終わったら、必ずカードを抜いてください。
+    </li>
+  </ul>
+</div>
+
+<div style="text-align:center">
+  <a href="/" class="home">← 戻る</a>
+</div>
+
+</div>
+</body>
+</html>

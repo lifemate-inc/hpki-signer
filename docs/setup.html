@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 🔒 セキュリティ: 外部スクリプト・iframe 等を厳格に制限 -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none';
+           script-src 'self' 'unsafe-inline';
+           style-src  'self' 'unsafe-inline';
+           img-src    'self' data:;
+           connect-src 'self' http://127.0.0.1:14733 http://localhost:14733;
+           form-action 'none';
+           frame-ancestors 'none';
+           base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>セットアップ | HPKI電子署名ツール</title>
+<style>
+  :root {
+    --green:    #2a7dd4;
+    --green-dk: #1a5fab;
+    --green-lt: #eff6ff;
+    --amber:    #f4a61a;
+    --amber-lt: #fef8ec;
+    --red:      #e05252;
+    --red-lt:   #fef0f0;
+    --gray:     #6b7280;
+    --gray-lt:  #f3f4f6;
+    --radius:   14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    background: #f0f5ff;
+    color: #1a2845;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  header .logo { font-size: 2rem; }
+  header h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--green-dk);
+    margin-top: 6px;
+  }
+  header p {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin-top: 4px;
+  }
+
+  /* ── ステップインジケーター ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 32px;
+    max-width: 560px;
+    width: 100%;
+  }
+  .step-dot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+  .step-dot .circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #bfdbfe;
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .3s;
+  }
+  .step-dot.active .circle  { background: var(--green); color: #fff; }
+  .step-dot.done .circle    { background: var(--green-dk); color: #fff; }
+  .step-dot .label {
+    font-size: 0.6rem;
+    color: var(--gray);
+    white-space: nowrap;
+  }
+  .step-dot.active .label { color: var(--green-dk); font-weight: 700; }
+  .step-connector {
+    flex: 1;
+    height: 2px;
+    background: #bfdbfe;
+    margin-bottom: 18px;
+    transition: background .3s;
+  }
+  .step-connector.done { background: var(--green-dk); }
+
+  /* ── カード ── */
+  .card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: 0 2px 16px rgba(0,80,40,.08);
+    padding: 32px 28px;
+    max-width: 560px;
+    width: 100%;
+    display: none;
+    animation: fadeUp .35s ease;
+  }
+  .card.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .card-icon { font-size: 2.8rem; text-align: center; margin-bottom: 12px; }
+  .card h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--green-dk);
+    margin-bottom: 8px;
+  }
+  .card .desc {
+    font-size: 0.92rem;
+    color: #4b5563;
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  /* ── チェックリスト ── */
+  .checklist {
+    list-style: none;
+    background: var(--green-lt);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .checklist li {
+    font-size: 0.9rem;
+    padding: 5px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .checklist li::before { content: '✅'; flex-shrink: 0; }
+
+  /* ── ボタン ── */
+  .btn {
+    width: 100%;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: var(--green);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--green-dk); transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--gray-lt);
+    color: var(--gray);
+    margin-top: 10px;
+  }
+  .btn-secondary:hover:not(:disabled) { background: #e5e7eb; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+  /* ── 入力フォーム ── */
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--gray);
+    margin-bottom: 6px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+  .field input[type="password"],
+  .field input[type="text"],
+  .field select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid #bfdbfe;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .field input:focus,
+  .field select:focus { border-color: var(--green); }
+  .field .hint {
+    font-size: 0.78rem;
+    color: var(--gray);
+    margin-top: 5px;
+  }
+
+  /* ── 情報バッジ ── */
+  .badge {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .badge-green  { background: var(--green-lt); border: 1.5px solid #93c5fd; color: #1e3a6e; }
+  .badge-amber  { background: var(--amber-lt); border: 1.5px solid #f4c97a; color: #7a4d00; }
+  .badge-red    { background: var(--red-lt);   border: 1.5px solid #f4b0b0; color: #7a1a1a; }
+
+  .cert-card {
+    background: var(--green-lt);
+    border: 1.5px solid #93c5fd;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+  .cert-card .cert-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--green-dk);
+    margin-bottom: 4px;
+  }
+  .cert-card .cert-detail {
+    font-size: 0.78rem;
+    color: var(--gray);
+    line-height: 1.6;
+  }
+
+  /* ── ステップ説明リスト ── */
+  .how-to {
+    counter-reset: step;
+    list-style: none;
+    margin-bottom: 20px;
+  }
+  .how-to li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .how-to li:last-child { border-bottom: none; }
+  .how-to li::before {
+    content: counter(step);
+    background: var(--green);
+    color: #fff;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── スピナー ── */
+  .spinner {
+    width: 22px; height: 22px;
+    border: 3px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 完了アニメーション ── */
+  .success-big { font-size: 4rem; text-align: center; margin: 12px 0 20px; }
+
+  /* ── モードバッジ ── */
+  .mode-mock {
+    display: inline-block;
+    background: var(--amber-lt);
+    color: #7a4d00;
+    border: 1px solid #f4c97a;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .mode-real {
+    display: inline-block;
+    background: var(--green-lt);
+    color: var(--green-dk);
+    border: 1px solid #93c5fd;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  /* ── 詳細設定（折りたたみ）── */
+  details { margin-bottom: 16px; }
+  details summary {
+    font-size: 0.82rem;
+    color: var(--gray);
+    cursor: pointer;
+    padding: 4px 0;
+  }
+  details[open] summary { color: var(--green-dk); }
+  .detail-body {
+    background: var(--gray-lt);
+    border-radius: 8px;
+    padding: 14px;
+    margin-top: 8px;
+  }
+  .detail-body .field:last-child { margin-bottom: 0; }
+
+  .divider { height: 1px; background: #e5e7eb; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🩺</div>
+  <h1>HPKI電子署名ツール セットアップ</h1>
+  <p>はじめに1回だけ行う準備です。約5分で完了します。</p>
+</header>
+
+<!-- ステップインジケーター -->
+<div class="steps" id="stepsBar">
+  <div class="step-dot active" id="dot0"><div class="circle">1</div><div class="label">ようこそ</div></div>
+  <div class="step-connector" id="con0"></div>
+  <div class="step-dot" id="dot1"><div class="circle">2</div><div class="label">カード確認</div></div>
+  <div class="step-connector" id="con1"></div>
+  <div class="step-dot" id="dot2"><div class="circle">3</div><div class="label">PIN入力</div></div>
+  <div class="step-connector" id="con2"></div>
+  <div class="step-dot" id="dot3"><div class="circle">4</div><div class="label">テスト署名</div></div>
+  <div class="step-connector" id="con3"></div>
+  <div class="step-dot" id="dot4"><div class="circle">5</div><div class="label">Acrobat設定</div></div>
+  <div class="step-connector" id="con4"></div>
+  <div class="step-dot" id="dot5"><div class="circle">6</div><div class="label">完了</div></div>
+</div>
+
+<!-- ═══ ステップ0: ようこそ ═══ -->
+<div class="card active" id="step0">
+  <div class="card-icon">👋</div>
+  <h2>ようこそ！</h2>
+  <p class="desc">このセットアップでは、次の3つの準備を行います。</p>
+  <ul class="checklist">
+    <li>HPKIカードとカードリーダーの動作確認</li>
+    <li>テスト用PDF に電子署名して動作を確認</li>
+    <li>Adobe Acrobat Reader の署名信頼設定</li>
+  </ul>
+  <div class="badge badge-amber">
+    💳 HPKIカードをカードリーダーに差し込んでから「次へ」を押してください。
+  </div>
+  <button class="btn btn-primary" onclick="goTo(1)">次へ ›</button>
+</div>
+
+<!-- ═══ ステップ1: 環境確認（リーダー + クライアントソフト） ═══ -->
+<div class="card" id="step1">
+  <div class="card-icon">🔍</div>
+  <h2>環境を確認します</h2>
+  <p class="desc">電子署名に必要な3つのものを順番に確認します。</p>
+
+  <!-- ──── ① カードリーダー ──── -->
+  <div style="margin:20px 0 12px"><strong>① カードリーダー</strong></div>
+  <div id="s1-reader-status">
+    <div class="badge badge-amber">⏳ 確認中…</div>
+  </div>
+  <div id="s1-reader-help" style="display:none">
+    <div class="cert-card" style="margin-bottom:8px">
+      <div class="cert-name">📱 推奨：サンワサプライ ADR-MNICU2 (¥7,040)</div>
+      <div class="cert-detail">マイナンバー / HPKI 両対応・USB Type-A</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px">
+        <a href="https://www.amazon.co.jp/s?k=ADR-MNICU2" target="_blank" rel="noopener"
+           class="btn btn-secondary" style="text-decoration:none; padding:8px 12px; font-size:.85rem">🛒 Amazon</a>
+        <a href="https://www.sanwa.co.jp/product/syohin?code=ADR-MNICU2" target="_blank" rel="noopener"
+           class="btn btn-secondary" style="text-decoration:none; padding:8px 12px; font-size:.85rem">🏪 サンワ直販</a>
+      </div>
+    </div>
+    <a href="https://www.sanwa.co.jp/support/download/dl_driver_ichiran?code=ADR-MNICU2"
+       target="_blank" rel="noopener"
+       class="btn btn-primary" style="text-decoration:none; display:flex">
+       📥 ドライバーをダウンロード（サンワ公式）
+    </a>
+  </div>
+
+  <!-- ──── ② カード対応ソフトウェア ──── -->
+  <div style="margin:24px 0 12px"><strong>② カード対応ソフトウェア</strong></div>
+
+  <!-- マイナンバー -->
+  <div id="s1-jpki-row" style="margin-bottom:8px">
+    <div id="s1-jpki-status"></div>
+    <div id="s1-jpki-help" style="display:none">
+      <div class="badge badge-amber" style="margin-top:4px">
+        🪪 <strong>マイナンバーカードを使う場合：</strong><br>
+        <span style="font-size:.85rem">J-LIS（公的機関）配布の「公的個人認証サービス利用者クライアントソフト」が必要です。<strong>無料</strong>でダウンロードできます。</span>
+      </div>
+      <a href="https://www.jpki.go.jp/download/" target="_blank" rel="noopener"
+         class="btn btn-primary" style="text-decoration:none; display:flex; margin-top:6px">
+        📥 J-LIS公式：JPKI利用者ソフトをダウンロード
+      </a>
+      <div style="font-size:.78rem; color:var(--gray); margin-top:4px">
+        ※ ダウンロード後、インストーラーを実行 → PC再起動で完了
+      </div>
+    </div>
+  </div>
+
+  <!-- HPKI -->
+  <div id="s1-hpki-row" style="margin-bottom:8px">
+    <div id="s1-hpki-status"></div>
+    <div id="s1-hpki-help" style="display:none">
+      <div class="badge badge-amber" style="margin-top:4px">
+        🏥 <strong>HPKIカード（医師・看護師カード）を使う場合：</strong><br>
+        <span style="font-size:.85rem">カード発行時に同梱されている「HPKIクライアントソフト」のインストールが必要です。<br>
+        ソフトを紛失した場合は、カードを発行した機関へお問い合わせください。</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px">
+        <a href="https://www.medis.or.jp/8_hpki/index.html" target="_blank" rel="noopener"
+           class="btn btn-secondary" style="text-decoration:none; padding:10px; font-size:.85rem">
+           👨‍⚕️ 医師向け（MEDIS）
+        </a>
+        <a href="https://www.nurse.or.jp/nursing/practice/hpki/" target="_blank" rel="noopener"
+           class="btn btn-secondary" style="text-decoration:none; padding:10px; font-size:.85rem">
+           🩺 看護師向け（看護協会）
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ──── ③ 進行可否の判定 ──── -->
+  <div id="s1-conclusion" style="margin-top:20px"></div>
+
+  <details id="s1-details" style="margin-top:16px">
+    <summary>⚙️ 詳細設定（通常は変更不要）</summary>
+    <div class="detail-body">
+      <div class="field">
+        <label>PKCS#11ライブラリ（DLL）パス</label>
+        <input type="text" id="dllPath" placeholder="自動検出（空欄でOK）">
+        <div class="hint">通常は空欄のままで大丈夫です。</div>
+      </div>
+      <div class="field">
+        <label>スロット番号</label>
+        <input type="text" id="slotNo" value="0" style="max-width:80px">
+      </div>
+    </div>
+  </details>
+
+  <button class="btn btn-primary" id="s1-next" onclick="goTo(2)" style="margin-top:16px" disabled>
+    次へ進む ›
+  </button>
+  <button class="btn btn-secondary" onclick="checkEnvironment()">🔄 もう一度確認する</button>
+  <button class="btn btn-secondary" onclick="goTo(0)">‹ 戻る</button>
+</div>
+
+<!-- ═══ ステップ2: PIN入力 ═══ -->
+<div class="card" id="step2">
+  <div class="card-icon">🔑</div>
+  <h2>PIN番号を入力してください</h2>
+  <p class="desc">HPKIカードのPIN番号を入力します。<br>入力した番号はこのPC内で一時的に使われるだけで、外部には送られません。</p>
+
+  <div class="field">
+    <label>PIN番号</label>
+    <input type="password" id="pinInput" placeholder="例：123456" maxlength="16"
+           autocomplete="off" autocorrect="off" autocapitalize="off"
+           spellcheck="false" data-form-type="other" inputmode="numeric"
+           onkeydown="if(event.key==='Enter') startSession()">
+    <div class="hint">通常4〜8桁の数字です。カード発行時に設定した番号を入力してください。</div>
+  </div>
+
+  <details>
+    <summary>⚙️ 詳細設定</summary>
+    <div class="detail-body">
+      <div class="field">
+        <label>キーラベル</label>
+        <input type="text" id="keyLabel" placeholder="空欄で自動選択">
+      </div>
+      <div class="field">
+        <label>証明書ラベル</label>
+        <input type="text" id="certLabel" placeholder="空欄で自動選択">
+      </div>
+    </div>
+  </details>
+
+  <div id="s2-status"></div>
+
+  <button class="btn btn-primary" id="s2-btn" onclick="startSession()">
+    確認する
+  </button>
+  <button class="btn btn-secondary" onclick="goTo(1)">‹ 戻る</button>
+</div>
+
+<!-- ═══ ステップ3: テスト署名 ═══ -->
+<div class="card" id="step3">
+  <div class="card-icon">📝</div>
+  <h2>テスト署名</h2>
+  <p class="desc">実際に空白のPDFに電子署名を行い、<br>動作を確認します。</p>
+
+  <div id="s3-cert"></div>
+  <div id="s3-status"></div>
+
+  <button class="btn btn-primary" id="s3-btn" onclick="testSign()">
+    テスト署名を実行する
+  </button>
+  <div id="s3-download" style="display:none; margin-top:12px">
+    <a id="s3-dl-link" href="#" class="btn btn-secondary" style="text-decoration:none; display:flex">
+      📄 署名済みPDFをダウンロード
+    </a>
+  </div>
+  <button class="btn btn-secondary" onclick="goTo(2)" style="margin-top:10px">‹ 戻る</button>
+</div>
+
+<!-- ═══ ステップ4: Acrobat設定 ═══ -->
+<div class="card" id="step4">
+  <div class="card-icon">🛡️</div>
+  <h2>Adobe Acrobat Reader の設定</h2>
+  <p class="desc">
+    署名の検証マークを緑色にするために、<br>
+    Acrobat Reader に証明書を登録します。<br>
+    <strong>この作業は1回だけ必要です。</strong>
+  </p>
+
+  <!-- HPKI 向け手順 -->
+  <div id="s4-hpki">
+    <div class="badge badge-amber" style="margin-bottom:16px">
+      ⏬ まず下のボタンで署名済みテストPDFをダウンロードしてください。
+    </div>
+    <div style="margin-bottom:16px">
+      <a id="s4-dl-link" href="#" class="btn btn-secondary" style="text-decoration:none; display:flex">
+        📄 署名済みテストPDFをダウンロード
+      </a>
+    </div>
+    <ol class="how-to">
+      <li>ダウンロードした PDF を <strong>Adobe Acrobat Reader</strong> で開く</li>
+      <li>右側の「<strong>署名パネル</strong>」アイコン（✏️）をクリック</li>
+      <li>署名の項目を右クリック →「<strong>署名者を信頼…</strong>」を選ぶ</li>
+      <li>「<strong>この証明書を信頼済みの証明書として追加する</strong>」にチェックを入れ、「OK」</li>
+      <li>もう一度PDFを開き直すと、署名マークが 🟢 緑色 になります</li>
+    </ol>
+    <div class="badge badge-green" style="margin-bottom:16px">
+      💡 ヒント：Acrobat が「インターネットに接続して証明書を確認しますか？」と聞いてきたら、「はい」を選んでください。
+    </div>
+    <div class="divider"></div>
+    <p style="font-size:0.82rem; color:var(--gray); margin-bottom:12px">
+      ※ 証明書ファイル（.cer）を直接インポートしたい場合はこちら
+    </p>
+    <a href="/api/cert/download" class="btn btn-secondary"
+       style="text-decoration:none; display:flex; margin-bottom:16px">
+      🔐 HPKI証明書ファイルをダウンロード（.cer）
+    </a>
+  </div>
+
+  <!-- マイナンバーカード向け手順 -->
+  <div id="s4-jpki" style="display:none">
+    <div id="s4-jpki-identify" class="badge badge-green" style="margin-bottom:16px; display:none">
+      <!-- 動的に挿入: あなたのカードは CAX が発行 -->
+    </div>
+
+    <!-- 推奨: Windows証明書ストア経由 -->
+    <div class="badge badge-green" style="margin-bottom:8px">
+      <strong>🚀 おすすめ：Windows証明書ストアに自動インストール</strong><br>
+      <span style="font-size:.85rem">下のボタン1回で J-LIS CA証明書（3世代分）が Windows に登録されます。</span>
+    </div>
+    <button class="btn btn-primary" id="s4-jpki-install" onclick="installJpkiCaToWindows()">
+      📥 Windows証明書ストアにインストール
+    </button>
+    <div id="s4-jpki-install-result" style="margin-top:8px"></div>
+
+    <ol class="how-to" style="margin-top:16px">
+      <li>↑のボタンを押して Windows に証明書をインストール</li>
+      <li><strong>Adobe Acrobat Reader</strong> を開く（PDFは開かなくてよい）</li>
+      <li>メニュー「<strong>編集</strong>」→「<strong>環境設定</strong>」→「<strong>署名</strong>」を開く</li>
+      <li>「<strong>確認</strong>」のところの「<strong>詳細</strong>」ボタンをクリック</li>
+      <li>下の方の「<strong>Windows 統合</strong>」セクションを探す</li>
+      <li>☑ 「<strong>署名の検証時に、Windows 証明書ストアでのすべてのルート証明書を信頼する</strong>」にチェック</li>
+      <li>☑ 「<strong>証明済み文書を検証時に、Windows 証明書ストアでのすべてのルート証明書を信頼する</strong>」にもチェック</li>
+      <li>「OK」を2回押す → Acrobat を終了して再起動</li>
+      <li>署名済みPDFを開く → 🟢 緑色になります！</li>
+    </ol>
+
+    <div class="divider"></div>
+
+    <details>
+      <summary>⚙️ うまくいかない場合：手動で Acrobat にインポート</summary>
+      <div class="detail-body" style="font-size:.88rem">
+        <a href="/api/jpki-ca/bundle" class="btn btn-secondary"
+           style="text-decoration:none; display:flex; margin-bottom:12px">
+          📦 J-LIS CA証明書バンドル をダウンロード（.p7b）
+        </a>
+        <ol class="how-to">
+          <li>Acrobat を開く → メニュー「<strong>編集</strong>」→「<strong>環境設定</strong>」→「<strong>署名</strong>」</li>
+          <li>「ID と信頼済み証明書」の「<strong>詳細</strong>」をクリック</li>
+          <li>左メニューの「<strong>信頼済み証明書</strong>」を選ぶ ← <em>「ID」ではない！</em></li>
+          <li>「<strong>インポート</strong>」ボタンをクリック</li>
+          <li>「<strong>参照</strong>」→ダウンロードした <code>.p7b</code> ファイルを選択</li>
+          <li>連絡先一覧に <strong>3つの J-LIS 証明書</strong> が出る → <strong>すべて選択</strong></li>
+          <li>右側の「<strong>信頼</strong>」ボタンをクリック</li>
+          <li>☑ 「<strong>このルート証明機関で発行された証明書を信頼します</strong>」</li>
+          <li>☑ 「<strong>証明済み文書</strong>」</li>
+          <li>「OK」→「インポート」→ Acrobat を再起動</li>
+        </ol>
+      </div>
+    </details>
+  </div>
+
+  <div class="divider"></div>
+  <button class="btn btn-primary" onclick="goTo(5)">設定が完了したら「次へ」 ›</button>
+  <button class="btn btn-secondary" onclick="goTo(3)">‹ 戻る</button>
+</div>
+
+<!-- ═══ ステップ5: 完了 ═══ -->
+<div class="card" id="step5">
+  <div class="success-big">🎉</div>
+  <h2>セットアップ完了！</h2>
+  <p class="desc">
+    準備が整いました。<br>
+    これで電子署名が使えるようになりました。
+  </p>
+
+  <ul class="checklist">
+    <li>HPKIカードの認識　OK</li>
+    <li>テスト署名　OK</li>
+    <li>Acrobat Reader の信頼設定　完了</li>
+  </ul>
+
+  <div class="badge badge-green" style="margin-bottom:20px">
+    📌 次回から：デスクトップの「電子署名ツール」をダブルクリックするだけで<br>
+    署名ツールが起動します。
+  </div>
+
+  <a href="/" class="btn btn-primary" style="text-decoration:none; display:flex">
+    🚀 署名ツールを開く
+  </a>
+  <button class="btn btn-secondary" id="s5-end-btn" onclick="endSession()" style="margin-top:10px">
+    🔒 セッションを終了する
+  </button>
+</div>
+
+
+<script>
+'use strict';
+
+// ── 状態 ────────────────────────────────────────────
+let detectedDll = null;
+let certInfo    = null;
+let signedPdfB64 = null;
+let CSRF_TOKEN  = '';   // /api/health で取得
+
+// ── API ヘルパー（CSRFトークン自動付与） ─────────────
+const api = {
+  async get(path) {
+    const r = await fetch(path);
+    const d = await r.json();
+    if (path === '/api/health' && d.csrfToken) CSRF_TOKEN = d.csrfToken;
+    return d;
+  },
+  async post(path, body) {
+    if (!CSRF_TOKEN) { try { await api.get('/api/health'); } catch {} }
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': CSRF_TOKEN,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const d = await r.json();
+    if (r.status === 403 && (d.error || '').includes('CSRF')) {
+      CSRF_TOKEN = '';
+      await api.get('/api/health');
+      return api.post(path, body);
+    }
+    return d;
+  },
+};
+
+// 🔒 PIN セキュリティ・グローバルガード
+function _wipePin() {
+  const el = document.getElementById('pinInput');
+  if (el) el.value = '';
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _wipePin();
+});
+window.addEventListener('beforeunload', _wipePin);
+window.addEventListener('pagehide',     _wipePin);
+
+// ── ステップ切り替え ─────────────────────────────────
+function goTo(n) {
+  document.querySelectorAll('.card').forEach((c, i) => {
+    c.classList.toggle('active', i === n);
+  });
+  // インジケーター更新
+  for (let i = 0; i < 6; i++) {
+    const dot = document.getElementById('dot' + i);
+    dot.classList.remove('active', 'done');
+    if (i < n)  dot.classList.add('done');
+    if (i === n) dot.classList.add('active');
+  }
+  for (let i = 0; i < 5; i++) {
+    const con = document.getElementById('con' + i);
+    con.classList.toggle('done', i < n);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // ステップ1（環境確認）に来たら自動でチェック開始
+  if (n === 1 && typeof checkEnvironment === 'function') {
+    setTimeout(checkEnvironment, 100);
+  }
+}
+
+// ── ヘルパー ─────────────────────────────────────────
+function setStatus(id, type, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = html
+    ? `<div class="badge badge-${type}" style="margin-bottom:16px">${html}</div>`
+    : '';
+}
+
+function setBtn(id, loading, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.disabled = loading;
+  el.innerHTML = loading
+    ? `<span class="spinner"></span> 確認中…`
+    : text;
+}
+
+// ── ステップ1: 環境（リーダー + JPKI + HPKI）の総合確認 ──
+async function checkEnvironment() {
+  // 初期化
+  const setBadge = (id, type, html) => {
+    document.getElementById(id).innerHTML =
+      `<div class="badge badge-${type}">${html}</div>`;
+  };
+  document.getElementById('s1-reader-help').style.display = 'none';
+  document.getElementById('s1-jpki-help').style.display   = 'none';
+  document.getElementById('s1-hpki-help').style.display   = 'none';
+  document.getElementById('s1-next').disabled = true;
+  document.getElementById('s1-conclusion').innerHTML = '';
+
+  setBadge('s1-reader-status', 'amber', '⏳ 確認中…');
+  setBadge('s1-jpki-status',   'amber', '⏳ 確認中…');
+  setBadge('s1-hpki-status',   'amber', '⏳ 確認中…');
+
+  let readerOK = false;
+  let jpkiOK   = false;
+  let hpkiOK   = false;
+
+  // ── ① カードリーダー検出 ──
+  try {
+    const r = await api.get('/api/check-reader');
+    if (r.count > 0) {
+      const names = r.readers.map(x => `<code style="font-size:.85rem">${x}</code>`).join('<br>');
+      setBadge('s1-reader-status', 'green',
+        `✅ <strong>カードリーダー検出</strong><br>${names}`);
+      readerOK = true;
+    } else {
+      setBadge('s1-reader-status', 'red',
+        `❌ <strong>カードリーダー未検出</strong><br>` +
+        `<span style="font-size:.85rem">USB端子に差し込み、ドライバーをインストールしてください。</span>`);
+      document.getElementById('s1-reader-help').style.display = '';
+    }
+  } catch (e) {
+    setBadge('s1-reader-status', 'red', `❌ 接続エラー：${e.message}`);
+  }
+
+  // ── ② PKCS#11 DLL（カード対応ソフト）検出 ──
+  try {
+    const h = await api.get('/api/health');
+    const libs = h.availableLibs || [];
+    jpkiOK = libs.some(l => l.type === 'jpki');
+    hpkiOK = libs.some(l => l.type === 'hpki');
+    detectedDll = h.detectedLib || null;
+    if (detectedDll) document.getElementById('dllPath').value = detectedDll;
+
+    // JPKI
+    if (jpkiOK) {
+      setBadge('s1-jpki-status', 'green',
+        `✅ <strong>JPKI利用者ソフト</strong> インストール済み（マイナンバーカード対応）`);
+    } else {
+      setBadge('s1-jpki-status', 'red',
+        `❌ <strong>JPKI利用者ソフト</strong> 未インストール`);
+      document.getElementById('s1-jpki-help').style.display = '';
+    }
+
+    // HPKI
+    if (hpkiOK) {
+      setBadge('s1-hpki-status', 'green',
+        `✅ <strong>HPKIクライアントソフト</strong> インストール済み（医師・看護師カード対応）`);
+    } else {
+      setBadge('s1-hpki-status', 'red',
+        `❌ <strong>HPKIクライアントソフト</strong> 未インストール`);
+      document.getElementById('s1-hpki-help').style.display = '';
+    }
+  } catch (e) {
+    setBadge('s1-jpki-status', 'red', `❌ 接続エラー：${e.message}`);
+    setBadge('s1-hpki-status', 'red', `❌ 接続エラー：${e.message}`);
+  }
+
+  // ── ③ 進行可否の判定 ──
+  const conc = document.getElementById('s1-conclusion');
+  if (readerOK && (jpkiOK || hpkiOK)) {
+    const types = [];
+    if (jpkiOK) types.push('マイナンバーカード');
+    if (hpkiOK) types.push('HPKIカード');
+    conc.innerHTML =
+      `<div class="badge badge-green">` +
+        `🎉 <strong>準備が整いました！</strong><br>` +
+        `${types.join('・')}で電子署名が使えます。「次へ進む」を押してください。` +
+      `</div>`;
+    document.getElementById('s1-next').disabled = false;
+  } else if (!readerOK) {
+    conc.innerHTML =
+      `<div class="badge badge-amber">⚠️ カードリーダーをセットアップしてから「もう一度確認」を押してください。</div>`;
+  } else {
+    conc.innerHTML =
+      `<div class="badge badge-amber">⚠️ JPKI または HPKI のソフトウェアを1つ以上インストールしてから「もう一度確認」を押してください。</div>`;
+  }
+}
+
+// ── ステップ2用：DLL再検出（PIN入力時に最新の利用可能DLLを反映） ──
+async function detectCard() {
+  setStatus('s1-status', 'amber', '⏳ カードを確認しています…');
+  const btn = document.getElementById('s1-next');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 確認中…';
+
+  try {
+    const data = await api.get('/api/health');
+    detectedDll = data.detectedLib || document.getElementById('dllPath').value.trim() || null;
+
+    if (data.mockMode) {
+      setStatus('s1-status', 'amber',
+        '⚠️ <strong>テストモード</strong>で動作しています。<br>' +
+        'HPKIカードが見つかりませんでした。カードリーダーに差し込んでいるか確認してください。<br>' +
+        '<span style="font-size:.8rem">このままでも動作確認はできますが、実際の署名にはカードが必要です。</span>'
+      );
+    } else {
+      const dllName = detectedDll ? detectedDll.split('\\').pop() : '自動検出';
+      setStatus('s1-status', 'green',
+        `✅ <strong>カードを認識しました！</strong><br>` +
+        `<span style="font-size:.8rem">ライブラリ：${dllName}</span>`
+      );
+      document.getElementById('dllPath').value = detectedDll || '';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '次へ ›';
+    btn.onclick = () => goTo(2);
+  } catch (e) {
+    setStatus('s1-status', 'red',
+      '❌ ブリッジサービスに接続できません。<br>' +
+      '<span style="font-size:.8rem">ページを再読み込みしてもう一度お試しください。</span>'
+    );
+    btn.disabled = false;
+    btn.innerHTML = '再試行';
+    btn.onclick = detectCard;
+  }
+}
+
+// ── ステップ2: セッション開始 ────────────────────────
+async function startSession() {
+  const pinEl = document.getElementById('pinInput');
+  let pin = pinEl.value.trim();
+  if (!pin) {
+    setStatus('s2-status', 'amber', '⚠️ PIN番号を入力してください。');
+    pinEl.focus();
+    return;
+  }
+
+  // 🔒 取り出した直後に入力欄をクリア
+  pinEl.value = '';
+
+  setBtn('s2-btn', true, '確認する');
+  setStatus('s2-status', '', '');
+
+  const body = {
+    pin:       pin,
+    pkcs11Lib: document.getElementById('dllPath').value.trim() || (detectedDll || ''),
+    slotNo:    parseInt(document.getElementById('slotNo').value || '0', 10) || 0,
+    keyLabel:  document.getElementById('keyLabel').value.trim(),
+    certLabel: document.getElementById('certLabel').value.trim(),
+  };
+
+  try {
+    const data = await api.post('/api/session/start', body);
+    // 🔒 ブリッジに送信完了 → JS変数からもPINを抹消
+    pin = null; body.pin = '';
+
+    if (data.error) {
+      let msg = data.error;
+      if (msg.includes('CKR_PIN_INCORRECT') || msg.includes('pin')) {
+        msg = '❌ PIN番号が違います。もう一度入力してください。';
+      } else if (msg.includes('CKR_TOKEN_NOT_PRESENT') || msg.includes('token')) {
+        msg = '❌ カードが認識できません。カードリーダーを確認してください。';
+      } else {
+        msg = `❌ エラーが発生しました：${msg}`;
+      }
+      setStatus('s2-status', 'red', msg);
+      setBtn('s2-btn', false, '確認する');
+      return;
+    }
+
+    certInfo = data.certInfo;
+    setBtn('s2-btn', false, '確認する');
+
+    // ステップ3 の証明書情報を埋め込む
+    renderCertCard();
+    goTo(3);
+
+  } catch (e) {
+    setStatus('s2-status', 'red', `❌ 通信エラー：${e.message}`);
+    setBtn('s2-btn', false, '確認する');
+  }
+}
+
+function renderCertCard() {
+  if (!certInfo) return;
+  const name = extractCN(certInfo.subject || '');
+  const expiry = certInfo.notAfter
+    ? certInfo.notAfter.substring(0, 10).replace(/-/g, '/')
+    : '不明';
+  const isJpki = certInfo.cardType === 'jpki';
+  const icon = isJpki ? '🪪' : '🧑‍⚕️';
+  const modeBadge = certInfo.mock
+    ? '<div class="mode-mock">🧪 テストモード（実カードなし）</div>'
+    : isJpki
+      ? '<div class="mode-real">✅ マイナンバーカード</div>'
+      : '<div class="mode-real">✅ 実HPKIカード</div>';
+  document.getElementById('s3-cert').innerHTML = `
+    <div class="cert-card">
+      <div class="cert-name">${icon} ${name || '（名前取得中）'}</div>
+      <div class="cert-detail">
+        発行機関：${certInfo.issuer || '-'}<br>
+        有効期限：${expiry} まで
+      </div>
+      ${modeBadge}
+    </div>`;
+}
+
+async function installJpkiCaToWindows() {
+  const btn = document.getElementById('s4-jpki-install');
+  const out = document.getElementById('s4-jpki-install-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> インストール中…';
+  out.innerHTML = '';
+  try {
+    const data = await api.post('/api/jpki-ca/install-to-windows');
+    if (data.installed > 0) {
+      out.innerHTML =
+        `<div class="badge badge-green">` +
+          `✅ <strong>${data.installed}/${data.total} の証明書を Windows にインストールしました。</strong><br>` +
+          `<span style="font-size:.8rem">次に Acrobat の「Windows 統合」を有効にしてください（下の手順）。</span>` +
+        `</div>`;
+      btn.textContent = '✅ インストール完了';
+    } else {
+      const errs = (data.results || []).filter(r => r.status !== 'ok').map(r => `${r.filename}: ${r.message}`).join('<br>');
+      out.innerHTML =
+        `<div class="badge badge-red">❌ インストールに失敗しました。<br><span style="font-size:.8rem">${errs}</span></div>`;
+      btn.disabled = false;
+      btn.textContent = '📥 もう一度試す';
+    }
+  } catch (e) {
+    out.innerHTML = `<div class="badge badge-red">❌ 通信エラー：${e.message}</div>`;
+    btn.disabled = false;
+    btn.textContent = '📥 もう一度試す';
+  }
+}
+
+async function renderAcrobatStep() {
+  const isJpki = certInfo && certInfo.cardType === 'jpki';
+  document.getElementById('s4-hpki').style.display = isJpki ? 'none' : '';
+  document.getElementById('s4-jpki').style.display = isJpki ? '' : 'none';
+
+  // JPKI の場合、親証明書を自動判定して表示
+  if (isJpki) {
+    try {
+      const data = await api.get('/api/jpki-ca/identify');
+      const el = document.getElementById('s4-jpki-identify');
+      if (data.found) {
+        el.style.display = '';
+        el.innerHTML =
+          `🔍 <strong>あなたのカードの親証明書を特定しました：</strong><br>` +
+          `<code>${data.filename}</code>（${data.label}）<br>` +
+          `<span style="font-size:.8rem">バンドル（.p7b）には3世代すべて含まれているので、そのままインポートしてOKです。</span>`;
+      }
+    } catch (e) { /* 判定失敗時は黙って続行 */ }
+  }
+}
+
+function extractCN(dn) {
+  const m = dn.match(/CN\s*=\s*([^,]+)/);
+  return m ? m[1].trim() : dn.split(',')[0].replace(/.*=/, '').trim();
+}
+
+// ── ステップ3: テスト署名 ────────────────────────────
+// 最小PDFをBase64で埋め込み
+const SAMPLE_PDF_B64 = 'JVBERi0xLjcKJcKlwrHDqwoxIDAgb2JqCjw8Ci9UeXBlIC9DYXRhbG9nCi9QYWdlcyAyIDAgUgo+PgplbmRvYmoKMiAwIG9iago8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWyAzIDAgUiBdCj4+CmVuZG9iagozIDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9NZWRpYUJveCBbIDAgMCA1OTUgODQyIF0KL1BhcmVudCA8PAovVHlwZSAvUGFnZXMKL0NvdW50IDEKL0tpZHMgWyAzIDAgUiBdCj4+Cj4+CmVuZG9iago0IDAgb2JqCjw8Ci9Nb2REYXRlIChEXDA3MjIwMjYwNTEzMTAxMzQ3XDA1MzA5XDA0NzAwXDA0NykKL1Byb2R1Y2VyIChweUhhbmtvIDBcMDU2MzVcMDU2MSkKPj4KZW5kb2JqCjUgMCBvYmoKPDwKL1cgWyAxIDggMiBdCi9UeXBlIC9YUmVmCi9GaWx0ZXIgL0ZsYXRlRGVjb2RlCi9Sb290IDEgMCBSCi9JbmZvIDQgMCBSCi9JRCBbIDwzZGI0ZDdlMDAyYzBhODZhOTlkZTRkMzQzNTI3OThkZD4gPDUzMjE4ZGE1Yzc0ZDcyM2E3ZWU5NTBlNjAwNGY3NzFiPiBdCi9TaXplIDYKL0luZGV4IFsgMCAxIDEgNSBdCi9MZW5ndGggMzMKPj4Kc3RyZWFtCnicY2CAgv//GaEsQQYGGNMJwaxFMN/AmYyBDAwAl/EEEgplbmRzdHJlYW0KZW5kb2JqCgpzdGFydHhyZWYKMzM3CiUlRU9GCg==';
+
+async function testSign() {
+  setBtn('s3-btn', true, 'テスト署名を実行する');
+  setStatus('s3-status', 'amber', '⏳ 署名中です。しばらくお待ちください…');
+  document.getElementById('s3-download').style.display = 'none';
+
+  try {
+    const data = await api.post('/api/sign', { pdf: SAMPLE_PDF_B64 });
+
+    if (data.error) {
+      setStatus('s3-status', 'red', `❌ 署名に失敗しました：${data.error}`);
+      setBtn('s3-btn', false, 'テスト署名を実行する');
+      return;
+    }
+
+    signedPdfB64 = data.signed;
+
+    // ダウンロードリンクを作る
+    const blob = b64toBlob(data.signed, 'application/pdf');
+    const url  = URL.createObjectURL(blob);
+    document.getElementById('s3-dl-link').href = url;
+    document.getElementById('s3-dl-link').download = 'テスト署名済み.pdf';
+    document.getElementById('s3-download').style.display = 'block';
+
+    // ステップ4用にも同じリンクをセット
+    const url2 = URL.createObjectURL(b64toBlob(data.signed, 'application/pdf'));
+    const s4link = document.getElementById('s4-dl-link');
+    if (s4link) { s4link.href = url2; s4link.download = 'テスト署名済み.pdf'; }
+
+    // カード種別に応じたAcrobat設定画面を切り替え
+    renderAcrobatStep();
+
+    setStatus('s3-status', 'green',
+      '✅ <strong>テスト署名が成功しました！</strong><br>' +
+      '署名済みPDFをダウンロードして、次のステップに進んでください。'
+    );
+    setBtn('s3-btn', false, '再度テスト署名');
+
+    // 少し待ってからステップ4へ自動遷移
+    setTimeout(() => goTo(4), 1800);
+
+  } catch (e) {
+    setStatus('s3-status', 'red', `❌ 通信エラー：${e.message}`);
+    setBtn('s3-btn', false, 'テスト署名を実行する');
+  }
+}
+
+function b64toBlob(b64, mime) {
+  const bytes = atob(b64);
+  const buf   = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+  return new Blob([buf], { type: mime });
+}
+
+// ── セッション終了 ────────────────────────────────────
+async function endSession() {
+  try {
+    await api.post('/api/session/end');
+  } catch (_) {}
+  const btn = document.getElementById('s5-end-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔒 セッションを終了しました'; }
+}
+
+// ── 起動時: ページ読込完了後に自動検出 ────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // ステップ1に来たら自動でカードスキャン
+  // （ページ開始時点ではまだ表示されていないので手動トリガー）
+});
+</script>
+</body>
+</html>
