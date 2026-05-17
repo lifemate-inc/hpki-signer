@@ -13,7 +13,10 @@
 
 #define MyAppName            "HPKI電子署名ツール"
 #define MyAppShortName       "HpkiSigner"
-#define MyAppVersion         "1.1.0"
+; MyAppVersion は /DMyAppVersion=X.Y.Z で上書き可能（CIで使用）
+#ifndef MyAppVersion
+  #define MyAppVersion       "1.1.1"
+#endif
 #define MyAppPublisher       "lifemate-inc"
 #define MyAppURL             "https://lifemate-inc.github.io/hpki-signer/"
 #define MyAppExeName         "launcher.exe"
@@ -22,7 +25,7 @@
 #ifdef LocalTest
   #define MyPayloadURL "http://127.0.0.1:8888/payload-" + MyAppVersion + ".zip"
 #else
-  #define MyPayloadURL "https://github.com/lifemate-inc/hpki-signer/releases/download/v" + MyAppVersion + "/payload-v" + MyAppVersion + ".zip"
+  #define MyPayloadURL "https://github.com/lifemate-inc/hpki-signer/releases/download/v" + MyAppVersion + "/payload-" + MyAppVersion + ".zip"
 #endif
 
 [Setup]
