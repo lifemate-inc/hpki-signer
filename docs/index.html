@@ -165,7 +165,13 @@ header{
   box-shadow:0 0 0 3px rgba(42,125,212,.15);
 }
 .card-pick-icon{font-size:1.8rem;display:block;margin-bottom:6px}
-.card-pick-label{font-size:.85rem;font-weight:bold;color:var(--gray-700);display:block}
+.card-pick-label{
+  font-size:.85rem;font-weight:bold;color:var(--gray-700);display:block;
+  /* 日本語の禁則処理: 「）」が行頭に来ないように、語句単位で折り返す */
+  word-break:keep-all;
+  line-break:strict;
+  overflow-wrap:break-word;
+}
 .card-pick-sub{font-size:.72rem;color:var(--gray-400);display:block;margin-top:2px}
 .card-pick-btn.selected .card-pick-label{color:var(--green-dk)}
 .card-no-card{

@@ -102,8 +102,9 @@ def csrf_check():
 
 _KNOWN_PKCS11_LIBS = [
     # (path, label, type)
-    (r'C:\Windows\System32\HpkiAuthP11_MPKCS11H.dll', 'HPKIカード（医師・看護師）', 'hpki'),
-    (r'C:\Windows\System32\HpkiSigP11_MPKCS11H.dll',  'HPKIカード 署名用', 'hpki'),
+    # ラベルは UI のカードピッカーに表示されるため簡潔に
+    (r'C:\Windows\System32\HpkiAuthP11_MPKCS11H.dll', 'HPKIカード', 'hpki'),
+    (r'C:\Windows\System32\HpkiSigP11_MPKCS11H.dll',  'HPKIカード', 'hpki'),
     (r'C:\Program Files\JPKI\JPKIPKCS11Sign64.dll',   'マイナンバーカード', 'jpki'),
     (r'C:\Program Files\JPKI\JPKIPKCS11Sign.dll',     'マイナンバーカード', 'jpki'),
 ]
