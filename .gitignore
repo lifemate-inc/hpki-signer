@@ -50,3 +50,12 @@ installer/launcher/launcher.exe
 # ── Windows ──
 Thumbs.db
 desktop.ini
+
+# ── 🔒 社内向け（絶対に公開しない）──
+# 営業・サポート担当向けのマニュアル類はローカル保管・社内 private repo で管理
+docs/manuals/sales/
+docs/manuals/support/
+docs/manuals/glossary.md
+docs/manuals/internal/
+*-internal.md
+internal-*
