@@ -29,7 +29,8 @@ from flask import Flask, request, jsonify, send_from_directory
 
 BRIDGE_DIR = Path(__file__).parent
 DOCS_DIR   = BRIDGE_DIR.parent / 'docs'
-PORT       = 14733
+# PORT は環境変数 HPKI_BRIDGE_PORT で上書き可能（launcher.exe がポート衝突時に別ポート指定）
+PORT       = int(os.environ.get('HPKI_BRIDGE_PORT', '14733'))
 
 app = Flask(__name__)
 
@@ -47,10 +48,10 @@ _CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader', '/api/d
 # ─── 許可オリジンの読み込み ────────────────────────────────────────────────────
 
 def _load_allowed_origins() -> set:
-    """allowed_origins.txt から許可オリジンを読み込む。常に localhost を含める。"""
+    """allowed_origins.txt から許可オリジンを読み込む。常に localhost（実際のポート）を含める。"""
     origins = {
-        'http://localhost:14733',
-        'http://127.0.0.1:14733',
+        f'http://localhost:{PORT}',
+        f'http://127.0.0.1:{PORT}',
         'null',   # file:// 経由（一部のテスト用途）
     }
     cfg = BRIDGE_DIR / 'allowed_origins.txt'
