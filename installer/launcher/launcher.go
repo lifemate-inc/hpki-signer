@@ -71,6 +71,28 @@ func isBridgeRunning() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// ブリッジに /api/shutdown を投げて自己終了させる
+// X-Shutdown-Token ヘッダーで認証（ファイルから読む）
+func shutdownBridge(appDir string) {
+	tokenBytes, err := os.ReadFile(filepath.Join(appDir, ".shutdown_token"))
+	if err != nil {
+		logf("shutdown token 読込失敗: %v", err)
+		return
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	req, err := http.NewRequest("POST", bridgeHealth+"/api/shutdown", nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("X-Shutdown-Token", strings.TrimSpace(string(tokenBytes)))
+	resp, err := client.Do(req)
+	if err != nil {
+		logf("shutdown 要求失敗: %v", err)
+		return
+	}
+	resp.Body.Close()
+}
+
 // ブリッジを起動。コンソール非表示。
 func startBridge(appDir string) error {
 	python := filepath.Join(appDir, "python", "python.exe")
@@ -246,16 +268,41 @@ func main() {
 	initLog(appDir)
 	logf("appDir = %s", appDir)
 
-	// 既に起動していたらブラウザだけ開く（更新は次回まで保留）
+	// 保留中のアップデートがあるか確認
+	pendingReady := filepath.Join(appDir, "_pending", ".ready")
+	hasPendingUpdate := false
+	if _, err := os.Stat(pendingReady); err == nil {
+		hasPendingUpdate = true
+		logf("保留中のアップデートを検出")
+	}
+
+	// bridge 稼働中の処理分岐
 	if isBridgeRunning() {
-		logf("bridge は既に起動中。ブラウザを開いて終了。")
-		openBrowser(bridgeURL)
-		return
+		if hasPendingUpdate {
+			// アップデート適用のため bridge を停止
+			logf("bridge 稼働中だがアップデートあり → 停止要求")
+			shutdownBridge(appDir)
+			// ポート解放・ファイルロック解放を待つ
+			for i := 0; i < 20; i++ {
+				time.Sleep(300 * time.Millisecond)
+				if !isBridgeRunning() {
+					break
+				}
+			}
+			logf("  bridge 停止完了")
+		} else {
+			// アップデートなし → ブラウザだけ開いて終了
+			logf("bridge は既に起動中。ブラウザを開いて終了。")
+			openBrowser(bridgeURL)
+			return
+		}
 	}
 
 	// 🔄 保留中のアップデートを静かに適用
-	if applyPendingUpdate(appDir) {
-		logf("アップデートを適用しました")
+	if hasPendingUpdate {
+		if applyPendingUpdate(appDir) {
+			logf("アップデートを適用しました")
+		}
 	}
 
 	if err := startBridge(appDir); err != nil {

@@ -38,8 +38,10 @@ app = Flask(__name__)
 CSRF_TOKEN = secrets.token_urlsafe(32)
 
 # CSRF検証を免除するエンドポイント（読み取り専用 GET と、トークン取得用 health）
+# /api/shutdown は localhost からのみ受け付ける（launcher が呼ぶため）
 _CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader', '/api/diagnostics',
-                '/api/self-update/status', '/api/browse-dll', '/api/cert/download',
+                '/api/self-update/status', '/api/shutdown',
+                '/api/browse-dll', '/api/cert/download',
                 '/api/jpki-ca/download', '/api/jpki-ca/bundle', '/api/jpki-ca/identify'}
 
 # ─── 許可オリジンの読み込み ────────────────────────────────────────────────────
@@ -294,6 +296,15 @@ def diagnostics():
 _APP_DIR     = BRIDGE_DIR.parent
 _PENDING_DIR = _APP_DIR / '_pending'
 
+# shutdown 用トークン: ローカルファイルに書き込み、launcher だけが読める権限
+# （ブラウザJSは fetch 経由でファイル読み込み不可なので CSRF 攻撃を防ぐ）
+SHUTDOWN_TOKEN = secrets.token_urlsafe(32)
+try:
+    _shutdown_token_path = _APP_DIR / '.shutdown_token'
+    _shutdown_token_path.write_text(SHUTDOWN_TOKEN, encoding='utf-8')
+except Exception:
+    pass
+
 # 現在ダウンロード中かどうかのフラグ（重複DL防止）
 _update_download_lock = threading.Lock()
 _update_download_state = {'status': 'idle', 'version': None, 'progress': 0, 'error': None}
@@ -389,6 +400,24 @@ def self_update_status():
     """ダウンロード状況を返す（UIのプログレス表示用）"""
     with _update_download_lock:
         return jsonify(dict(_update_download_state))
+
+
+@app.route('/api/shutdown', methods=['POST'])
+def api_shutdown():
+    """ブリッジを自己終了する。launcher が更新適用のために呼ぶ。
+    X-Shutdown-Token ヘッダーでファイルベースの認証を行うことで、
+    悪意あるWebサイトからの CSRF 攻撃を防ぐ。
+    """
+    import os
+    token = request.headers.get('X-Shutdown-Token', '')
+    if not secrets.compare_digest(token, SHUTDOWN_TOKEN):
+        return jsonify({'error': 'unauthorized'}), 403
+    def _exit_later():
+        import time
+        time.sleep(0.5)   # レスポンス返却を待ってから終了
+        os._exit(0)
+    threading.Thread(target=_exit_later, daemon=True).start()
+    return jsonify({'status': 'shutting_down'})
 
 
 @app.route('/api/check-update')
