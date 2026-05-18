@@ -122,24 +122,30 @@ Write-Host "  ✅ wheel ダウンロード完了" -ForegroundColor Green
 $SITE_PACKAGES = Join-Path $PY_DIR "Lib\site-packages"
 New-Item -ItemType Directory -Force -Path $SITE_PACKAGES | Out-Null
 
-# 全 wheel を site-packages に展開（依存解決は pip download 時に完了済み）
+# 全 wheel を site-packages に展開
+# wheel は単なる ZIP なので、現在の Python バージョンに依存せず直接展開する
+# (pip install --target だと現在のPython版と wheel の cpXX が一致しないと失敗)
 $wheelFiles = Get-ChildItem $WHEELS -Filter "*.whl"
 Write-Host "▶ $($wheelFiles.Count) 個の wheel を site-packages に展開..." -ForegroundColor Yellow
-$prevErrPref2 = $ErrorActionPreference
-$ErrorActionPreference = 'Continue'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 foreach ($w in $wheelFiles) {
-    $installArgs = @(
-        '-m', 'pip', 'install',
-        '--no-index', '--no-deps', '--upgrade',
-        '--target', $SITE_PACKAGES,
-        $w.FullName
-    )
-    & python @installArgs *> $null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ⚠️ $($w.Name) のインストールに失敗（コード $LASTEXITCODE）" -ForegroundColor Red
+    try {
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($w.FullName)
+        foreach ($entry in $zip.Entries) {
+            # ディレクトリエントリはスキップ
+            if ($entry.Name -eq '') { continue }
+            $target = Join-Path $SITE_PACKAGES $entry.FullName
+            $targetDir = Split-Path $target -Parent
+            if (-not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+            }
+            [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true)
+        }
+        $zip.Dispose()
+    } catch {
+        Write-Host "  ⚠️ $($w.Name) の展開エラー: $_" -ForegroundColor Red
     }
 }
-$ErrorActionPreference = $prevErrPref2
 Write-Host "  ✅ 展開完了" -ForegroundColor Green
 
 # ─── ③ bridge と docs の同梱 ──────────────────────────────────────
