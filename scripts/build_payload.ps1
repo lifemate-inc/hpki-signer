@@ -156,14 +156,9 @@ Get-ChildItem -Path $bridgeDest -Recurse -Filter "__pycache__" | Remove-Item -Re
 # docs をコピー
 Copy-Item -Path (Join-Path $ROOT "docs") -Destination (Join-Path $STAGING "docs") -Recurse
 
-# launcher.exe をコピー（事前にビルド済みのものを使う）
-$launcherSrc = Join-Path $ROOT "installer\launcher\launcher.exe"
-if (Test-Path $launcherSrc) {
-    Copy-Item -Path $launcherSrc -Destination (Join-Path $STAGING "launcher.exe")
-} else {
-    Write-Host "⚠️  launcher.exe が見つかりません: $launcherSrc" -ForegroundColor Red
-    Write-Host "   先に installer\launcher で 'go build' を実行してください。" -ForegroundColor Red
-}
+# launcher.exe は payload に含めない（インストーラ直接同梱）
+# 理由: 自プロセスのexe上書きは Windows でファイルロック衝突するため、
+# サイレント自動更新の対象から外す。launcher 更新はインストーラ再実行で対応。
 
 # バージョン情報を埋め込む
 Set-Content -Path (Join-Path $STAGING "VERSION.txt") -Value "$Version"

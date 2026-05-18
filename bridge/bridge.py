@@ -39,7 +39,7 @@ CSRF_TOKEN = secrets.token_urlsafe(32)
 
 # CSRF検証を免除するエンドポイント（読み取り専用 GET と、トークン取得用 health）
 _CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader', '/api/diagnostics',
-                '/api/browse-dll', '/api/cert/download',
+                '/api/self-update/status', '/api/browse-dll', '/api/cert/download',
                 '/api/jpki-ca/download', '/api/jpki-ca/bundle', '/api/jpki-ca/identify'}
 
 # ─── 許可オリジンの読み込み ────────────────────────────────────────────────────
@@ -285,6 +285,109 @@ def diagnostics():
         'log_size':      log_size,
         'log_tail':      log_tail,
     })
+
+
+# ─── 自動アップデート ──────────────────────────────────────────────────────────
+
+# 更新ファイルの保留先（launcher.exe が次回起動時に適用する）
+_APP_DIR     = BRIDGE_DIR.parent
+_PENDING_DIR = _APP_DIR / '_pending'
+
+# 現在ダウンロード中かどうかのフラグ（重複DL防止）
+_update_download_lock = threading.Lock()
+_update_download_state = {'status': 'idle', 'version': None, 'progress': 0, 'error': None}
+
+
+def _download_update_payload(release_url: str, latest_version: str):
+    """バックグラウンドスレッドで payload-vX.Y.Z.zip をダウンロードする。"""
+    global _update_download_state
+    import urllib.request
+
+    payload_url = f'https://github.com/{GITHUB_REPO}/releases/download/v{latest_version}/payload-{latest_version}.zip'
+    target = _PENDING_DIR / f'payload-{latest_version}.zip'
+    ready_flag = _PENDING_DIR / '.ready'
+
+    try:
+        _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+        # 古い保留ファイルをクリア
+        for old in _PENDING_DIR.glob('payload-*.zip'):
+            if old.name != target.name:
+                try: old.unlink()
+                except Exception: pass
+        if ready_flag.exists():
+            try: ready_flag.unlink()
+            except Exception: pass
+
+        with _update_download_lock:
+            _update_download_state = {'status': 'downloading', 'version': latest_version, 'progress': 0, 'error': None}
+
+        # ダウンロード（プログレス計測なしのシンプル実装）
+        req = urllib.request.Request(payload_url, headers={'User-Agent': f'HpkiSigner/{VERSION}'})
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            total = int(resp.headers.get('Content-Length', 0))
+            downloaded = 0
+            with open(target, 'wb') as f:
+                while True:
+                    chunk = resp.read(64 * 1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total > 0:
+                        with _update_download_lock:
+                            _update_download_state['progress'] = int(downloaded * 100 / total)
+
+        # ダウンロード完了フラグを作成（launcher が見る）
+        ready_flag.write_text(latest_version, encoding='utf-8')
+
+        with _update_download_lock:
+            _update_download_state = {'status': 'ready', 'version': latest_version, 'progress': 100, 'error': None}
+        print(f'[bridge] アップデート v{latest_version} をダウンロード完了。次回起動時に適用されます。', flush=True)
+    except Exception as e:
+        with _update_download_lock:
+            _update_download_state = {'status': 'error', 'version': latest_version, 'progress': 0, 'error': str(e)}
+        print(f'[bridge] アップデートダウンロード失敗: {e}', flush=True)
+
+
+@app.route('/api/self-update/trigger', methods=['POST'])
+def self_update_trigger():
+    """新版があればバックグラウンドDL開始（重複起動防止）。フロントから自動で呼ばれる。"""
+    global _update_download_state
+    with _update_download_lock:
+        if _update_download_state['status'] == 'downloading':
+            return jsonify({'status': 'already_downloading', 'state': _update_download_state})
+
+    # check-update を内部呼び出し
+    import urllib.request, json
+    try:
+        req = urllib.request.Request(
+            f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest',
+            headers={'User-Agent': f'HpkiSigner/{VERSION}'},
+        )
+        with urllib.request.urlopen(req, timeout=3) as r:
+            data = json.loads(r.read())
+        latest = data.get('tag_name', '').lstrip('v')
+        if not _semver_gt(latest, VERSION):
+            return jsonify({'status': 'up_to_date', 'current': VERSION})
+
+        # 既に同じバージョンをDL済みなら skip
+        ready_flag = _PENDING_DIR / '.ready'
+        if ready_flag.exists() and ready_flag.read_text(encoding='utf-8').strip() == latest:
+            return jsonify({'status': 'already_ready', 'version': latest})
+
+        # バックグラウンドDL開始
+        t = threading.Thread(target=_download_update_payload, args=(data.get('html_url'), latest), daemon=True)
+        t.start()
+        return jsonify({'status': 'started', 'version': latest})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 200
+
+
+@app.route('/api/self-update/status')
+def self_update_status():
+    """ダウンロード状況を返す（UIのプログレス表示用）"""
+    with _update_download_lock:
+        return jsonify(dict(_update_download_state))
 
 
 @app.route('/api/check-update')

@@ -73,10 +73,11 @@ Name: "desktopicon"; Description: "デスクトップにショートカットを
     GroupDescription: "追加アイコン:"; Flags: checkedonce
 
 [Files]
-; 同梱するファイルは最小限（payload は実行時にDL）
+; アイコン
 Source: "HpkiSigner.ico"; DestDir: "{app}"; Flags: ignoreversion
-; payload-{Version}.zip を同梱する場合（オフラインインストール用、コメントアウト中）
-; Source: "..\build\payload-{#MyAppVersion}.zip"; DestDir: "{app}\_payload"; Flags: ignoreversion deleteafterinstall
+; launcher.exe をインストーラに直接同梱（payload からは除外）
+; 自プロセスの上書きは Windows でロックされるため、launcher 更新はインストーラ経由のみ
+Source: "launcher\launcher.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\HpkiSigner.ico"

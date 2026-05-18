@@ -698,7 +698,7 @@ async function checkBridge() {
   }
 }
 
-// アップデート確認（バックグラウンドで1回だけ）
+// アップデート確認（バックグラウンドで自動DL → 次回起動時に適用）
 let _updateUrl = null;
 async function checkForUpdate() {
   try {
@@ -706,11 +706,39 @@ async function checkForUpdate() {
     if (d && d.updateAvailable) {
       _updateUrl = d.releaseUrl;
       const badge = document.getElementById('updateBadge');
-      badge.textContent = `🎉 v${d.latest} 公開中`;
+      badge.textContent = `🔄 v${d.latest} 取得中…`;
       badge.style.display = 'inline-block';
+
+      // バックグラウンドDLをトリガー（重複OK・bridge内で防止される）
+      try {
+        await api.post('/api/self-update/trigger', {});
+      } catch (_) {}
+
+      // 1分後にステータスを確認してバッジを更新
+      setTimeout(checkUpdateStatus, 60000);
     }
   } catch (_) { /* ネット切れ等は無視 */ }
 }
+
+async function checkUpdateStatus() {
+  try {
+    const s = await api.get('/api/self-update/status');
+    const badge = document.getElementById('updateBadge');
+    if (s.status === 'ready') {
+      badge.textContent = `✅ v${s.version} 次回起動時に適用`;
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#166534';
+    } else if (s.status === 'downloading') {
+      badge.textContent = `🔄 v${s.version} ダウンロード中 (${s.progress}%)`;
+      setTimeout(checkUpdateStatus, 30000);  // 30秒後にまた確認
+    } else if (s.status === 'error') {
+      badge.textContent = `⚠️ アップデート失敗（次回起動時に再試行）`;
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#991b1b';
+    }
+  } catch (_) {}
+}
+
 function openUpdateLink() {
   if (_updateUrl) window.open(_updateUrl, '_blank');
 }
