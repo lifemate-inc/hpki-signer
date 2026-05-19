@@ -2,6 +2,6 @@
 # payload ビルド時に wheel をDLする元になる
 flask>=3.0.0
 pyhanko[pkcs11]>=0.35.0
-cryptography>=42.0.0
+cryptography>=48.0.0
 asn1crypto>=1.5
 requests>=2.31
