@@ -19,7 +19,7 @@ jobs:
   python-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Python セットアップ
         uses: actions/setup-python@v5
@@ -51,7 +51,7 @@ jobs:
   go-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Go セットアップ
         uses: actions/setup-go@v6
@@ -78,7 +78,7 @@ jobs:
   docs-checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: 内部用語が公開ドキュメントに残っていないかチェック
         run: |

@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: ソースをチェックアウト
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: バージョン番号を決定
         id: version
