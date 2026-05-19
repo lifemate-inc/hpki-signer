@@ -3,5 +3,5 @@
 flask>=3.0.0
 pyhanko[pkcs11]>=0.35.0
 cryptography>=42.0.0
-asn1crypto>=1.5
+asn1crypto>=1.5.1
 requests>=2.31
