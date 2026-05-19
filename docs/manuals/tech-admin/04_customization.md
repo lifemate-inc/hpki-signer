@@ -224,6 +224,10 @@ bridge/
 | 出力ファイル名サフィックス | 例: `_signed` | localStorage |
 | 上書き保存 | 元ファイルを上書きするか | localStorage |
 
+「詳細設定（通常は変更不要です）」を展開した状態:
+
+![詳細設定展開時](../../screenshots/06-advanced-settings.png)
+
 localStorage に保存されるため、ブラウザを変えるとリセットされます。
 
 ---

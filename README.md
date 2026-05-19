@@ -82,6 +82,8 @@ PIN や PDF の内容は**インターネットに送信されません**。
 
 詳しくは [セキュリティについて](https://lifemate-inc.github.io/hpki-signer/security.html) をご覧ください。
 
+![セキュリティ説明ページ](docs/screenshots/20-security-page.png)
+
 ### 実装されている保護機構
 
 - **CORS allowlist** — 指定したサイト以外からの API 呼び出しを拒否
