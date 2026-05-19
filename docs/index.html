@@ -4,12 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- 🔒 セキュリティ: 外部スクリプト・iframe 等を厳格に制限 -->
+<!-- 🔒 セキュリティ: 外部スクリプト・iframe 等を厳格に制限
+     connect-src は port_range (14733-14737) すべてを許可する。
+     ブリッジがポート衝突で fallback した場合でも UI が動くため。 -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none';
            script-src 'self' 'unsafe-inline';
            style-src  'self' 'unsafe-inline';
            img-src    'self' data:;
-           connect-src 'self' http://127.0.0.1:14733 http://localhost:14733;
+           connect-src 'self'
+             http://127.0.0.1:14733 http://localhost:14733
+             http://127.0.0.1:14734 http://localhost:14734
+             http://127.0.0.1:14735 http://localhost:14735
+             http://127.0.0.1:14736 http://localhost:14736
+             http://127.0.0.1:14737 http://localhost:14737;
            form-action 'none';
            frame-ancestors 'none';
            base-uri 'none'">
@@ -433,8 +441,9 @@ header{
       <div class="pin-wrap">
         <input type="password" id="pin" class="pin-input"
           placeholder="••••••"
-          autocomplete="off" autocorrect="off" autocapitalize="off"
+          autocomplete="new-password" autocorrect="off" autocapitalize="off"
           spellcheck="false" data-form-type="other"
+          name="hpki-pin-no-save-do-not-fill"
           oninput="updateBtn()">
         <button class="pin-toggle" onclick="togglePin()" title="表示/非表示">👁</button>
       </div>
@@ -580,8 +589,25 @@ header{
 <script>
 'use strict';
 
-const BRIDGE = 'http://localhost:14733';
+// ブリッジは port 14733 がデフォルト、衝突時は 14734-14737 に fallback する。
+// ① 同一オリジン(ブリッジが配信)なら location.origin を使う(常に一致)
+// ② 別オリジン(GitHub Pages 等)から開かれた場合は 14733 起点で検出する
+const BRIDGE_PORTS = [14733, 14734, 14735, 14736, 14737];
+const _isLocalhostOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(location.origin);
+let BRIDGE = _isLocalhostOrigin ? location.origin : `http://localhost:${BRIDGE_PORTS[0]}`;
 const STORAGE_KEY = 'hpki_v2';
+
+// 別オリジンから開かれている場合、14733 が応答しなければ次のポートを試す
+async function discoverBridgePort() {
+  if (_isLocalhostOrigin) return;   // 同一オリジン時は不要
+  for (const port of BRIDGE_PORTS) {
+    const candidate = `http://localhost:${port}`;
+    try {
+      const r = await fetch(`${candidate}/api/health`, { signal: AbortSignal.timeout(800) });
+      if (r.ok) { BRIDGE = candidate; return; }
+    } catch {}
+  }
+}
 
 let S = {
   connected: false,
@@ -689,6 +715,8 @@ function onDllManual() {
 // ── ブリッジ接続確認 ──────────────────────────────────────────
 async function checkBridge() {
   try {
+    // 別オリジンから開いている場合は最初の試行前にポート検出
+    if (!_isLocalhostOrigin && !S.connected) await discoverBridgePort();
     const d = await api.get('/api/health');
     if (!S.connected || S.mock !== d.mockMode) {
       S.connected = true; S.mock = d.mockMode;
@@ -775,7 +803,14 @@ function onDisconnect() {
 // ── フォルダ選択 ──────────────────────────────────────────────
 async function pickFolder() {
   if (!window.showDirectoryPicker) {
-    alert('このブラウザには対応していません。Chrome または Edge をお使いください。');
+    alert(
+      'このブラウザはフォルダ選択 API に対応していません。\n\n' +
+      '【対応ブラウザ】\n' +
+      '・Google Chrome（最新版）\n' +
+      '・Microsoft Edge（最新版）\n\n' +
+      'Firefox / Safari ではご利用いただけません。\n' +
+      'デスクトップの「HPKI電子署名ツール」アイコンから起動すれば、自動的に対応ブラウザで開きます。'
+    );
     return;
   }
   try {

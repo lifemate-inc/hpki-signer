@@ -34,6 +34,27 @@ PORT       = int(os.environ.get('HPKI_BRIDGE_PORT', '14733'))
 
 app = Flask(__name__)
 
+# DoS対策: POST のリクエストサイズ上限 100MB（PDF は base64 で 4/3 倍に膨らむ点を考慮）
+# 通常の業務PDFは 1〜10MB 程度。100MB を超える PDF は事実上ありえない。
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+
+# ─── ログローテーション ────────────────────────────────────────────────────────
+# bridge.log を 10MB × 5世代でローテーション（無限肥大を防ぐ）
+try:
+    import logging
+    from logging.handlers import RotatingFileHandler
+    _log_path = Path(__file__).parent / 'bridge.log'
+    _handler  = RotatingFileHandler(str(_log_path), maxBytes=10 * 1024 * 1024,
+                                    backupCount=5, encoding='utf-8')
+    _handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    # Flask/werkzeug のロガーにも適用
+    for _name in ('werkzeug', 'bridge'):
+        _logger = logging.getLogger(_name)
+        _logger.setLevel(logging.INFO)
+        _logger.addHandler(_handler)
+except Exception:
+    pass   # ログハンドラ設定の失敗は致命的でない
+
 # ─── CSRFトークン: 起動ごとに新規生成 ────────────────────────────────────────
 # このプロセス内に閉じ、ファイル等には書き出さない（プロセス再起動で破棄される）
 CSRF_TOKEN = secrets.token_urlsafe(32)
@@ -48,12 +69,12 @@ _CSRF_EXEMPT = {'/api/health', '/api/check-update', '/api/check-reader', '/api/d
 # ─── 許可オリジンの読み込み ────────────────────────────────────────────────────
 
 def _load_allowed_origins() -> set:
-    """allowed_origins.txt から許可オリジンを読み込む。常に localhost（実際のポート）を含める。"""
-    origins = {
-        f'http://localhost:{PORT}',
-        f'http://127.0.0.1:{PORT}',
-        'null',   # file:// 経由（一部のテスト用途）
-    }
+    """allowed_origins.txt から許可オリジンを読み込む。常に localhost（fallback ポート全部）を含める。"""
+    origins = {'null'}   # file:// 経由（一部のテスト用途）
+    # port_range (14733-14737) のすべてを許可。実 PORT が衝突で別になっても動作する
+    for p in (14733, 14734, 14735, 14736, 14737, PORT):
+        origins.add(f'http://localhost:{p}')
+        origins.add(f'http://127.0.0.1:{p}')
     cfg = BRIDGE_DIR / 'allowed_origins.txt'
     if cfg.exists():
         for line in cfg.read_text(encoding='utf-8').splitlines():
@@ -91,8 +112,9 @@ def csrf_check():
     if request.method == 'GET' or request.path in _CSRF_EXEMPT:
         return None
     # 同一オリジン(localhost自身)の POST は受け付ける（ブリッジ配信のページ）
+    # ※ port は実際の PORT を参照（fallback で 14734-14737 になる場合に対応）
     origin = request.headers.get('Origin', '').rstrip('/').lower()
-    if origin in ('http://localhost:14733', 'http://127.0.0.1:14733'):
+    if origin in (f'http://localhost:{PORT}', f'http://127.0.0.1:{PORT}'):
         # それでも CSRF ヘッダーを要求する（GitHub Pages 経由の場合と区別しない）
         pass
     token = request.headers.get('X-CSRF-Token', '')
@@ -312,13 +334,21 @@ _update_download_state = {'status': 'idle', 'version': None, 'progress': 0, 'err
 
 
 def _download_update_payload(release_url: str, latest_version: str):
-    """バックグラウンドスレッドで payload-vX.Y.Z.zip をダウンロードする。"""
+    """バックグラウンドスレッドで payload-vX.Y.Z.zip をダウンロードし、SHA256 を検証する。
+    検証失敗時は保留ディレクトリを破棄して .ready を作らない（= 適用されない）。
+    """
     global _update_download_state
-    import urllib.request
+    import urllib.request, hashlib
 
     payload_url = f'https://github.com/{GITHUB_REPO}/releases/download/v{latest_version}/payload-{latest_version}.zip'
-    target = _PENDING_DIR / f'payload-{latest_version}.zip'
-    ready_flag = _PENDING_DIR / '.ready'
+    sha256_url  = f'{payload_url}.sha256'   # GitHub Release に同梱（ワークフローで生成）
+    target      = _PENDING_DIR / f'payload-{latest_version}.zip'
+    ready_flag  = _PENDING_DIR / '.ready'
+
+    def _cleanup_failed():
+        try:
+            if target.exists(): target.unlink()
+        except Exception: pass
 
     try:
         _PENDING_DIR.mkdir(parents=True, exist_ok=True)
@@ -334,9 +364,25 @@ def _download_update_payload(release_url: str, latest_version: str):
         with _update_download_lock:
             _update_download_state = {'status': 'downloading', 'version': latest_version, 'progress': 0, 'error': None}
 
-        # ダウンロード（プログレス計測なしのシンプル実装）
+        # ① 期待 SHA256 を取得（無ければ検証スキップ＝旧版互換）
+        # URL は GitHub Releases の HTTPS 固定パターンのため動的入力なし
+        expected_sha256 = None
+        try:
+            req_h = urllib.request.Request(sha256_url, headers={'User-Agent': f'HpkiSigner/{VERSION}'})
+            with urllib.request.urlopen(req_h, timeout=10) as resp_h:  # nosec B310
+                line = resp_h.read().decode('ascii', errors='ignore').strip()
+                # "<hex>  filename" 形式 or hex 単独
+                token = line.split()[0] if line else ''
+                if len(token) == 64 and all(c in '0123456789abcdefABCDEF' for c in token):
+                    expected_sha256 = token.lower()
+                    print(f'[bridge] 期待SHA256: {expected_sha256}', flush=True)
+        except Exception as e:
+            print(f'[bridge] SHA256 取得失敗（検証スキップ）: {e}', flush=True)
+
+        # ② payload をダウンロードしながらハッシュを計算（URL は HTTPS 固定）
+        hasher = hashlib.sha256()
         req = urllib.request.Request(payload_url, headers={'User-Agent': f'HpkiSigner/{VERSION}'})
-        with urllib.request.urlopen(req, timeout=300) as resp:
+        with urllib.request.urlopen(req, timeout=300) as resp:  # nosec B310
             total = int(resp.headers.get('Content-Length', 0))
             downloaded = 0
             with open(target, 'wb') as f:
@@ -345,18 +391,31 @@ def _download_update_payload(release_url: str, latest_version: str):
                     if not chunk:
                         break
                     f.write(chunk)
+                    hasher.update(chunk)
                     downloaded += len(chunk)
                     if total > 0:
                         with _update_download_lock:
                             _update_download_state['progress'] = int(downloaded * 100 / total)
 
-        # ダウンロード完了フラグを作成（launcher が見る）
+        actual_sha256 = hasher.hexdigest().lower()
+        print(f'[bridge] 実SHA256: {actual_sha256}', flush=True)
+
+        # ③ ハッシュ検証
+        if expected_sha256 and actual_sha256 != expected_sha256:
+            _cleanup_failed()
+            raise ValueError(
+                f'payload の SHA256 が一致しません。'
+                f'期待={expected_sha256[:16]}... 実={actual_sha256[:16]}...'
+            )
+
+        # ④ ダウンロード完了フラグを作成（launcher が見る）
         ready_flag.write_text(latest_version, encoding='utf-8')
 
         with _update_download_lock:
             _update_download_state = {'status': 'ready', 'version': latest_version, 'progress': 100, 'error': None}
         print(f'[bridge] アップデート v{latest_version} をダウンロード完了。次回起動時に適用されます。', flush=True)
     except Exception as e:
+        _cleanup_failed()
         with _update_download_lock:
             _update_download_state = {'status': 'error', 'version': latest_version, 'progress': 0, 'error': str(e)}
         print(f'[bridge] アップデートダウンロード失敗: {e}', flush=True)
@@ -370,14 +429,14 @@ def self_update_trigger():
         if _update_download_state['status'] == 'downloading':
             return jsonify({'status': 'already_downloading', 'state': _update_download_state})
 
-    # check-update を内部呼び出し
+    # check-update を内部呼び出し（GitHub API HTTPS 固定）
     import urllib.request, json
     try:
         req = urllib.request.Request(
             f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest',
             headers={'User-Agent': f'HpkiSigner/{VERSION}'},
         )
-        with urllib.request.urlopen(req, timeout=3) as r:
+        with urllib.request.urlopen(req, timeout=3) as r:  # nosec B310
             data = json.loads(r.read())
         latest = data.get('tag_name', '').lstrip('v')
         if not _semver_gt(latest, VERSION):
@@ -425,12 +484,13 @@ def api_shutdown():
 def check_update():
     """GitHub Releases API で最新版を確認（ネットなし環境では黙って失敗）"""
     import urllib.request, json
+    # 固定の HTTPS URL（GitHub API）のみを叩く ─ 動的入力なし
     try:
         req = urllib.request.Request(
             f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest',
             headers={'User-Agent': f'HpkiSigner/{VERSION}'},
         )
-        with urllib.request.urlopen(req, timeout=3) as r:
+        with urllib.request.urlopen(req, timeout=3) as r:  # nosec B310
             data = json.loads(r.read())
         latest = data.get('tag_name', '').lstrip('v')
         return jsonify({

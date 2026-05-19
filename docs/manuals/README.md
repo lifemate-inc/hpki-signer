@@ -27,6 +27,7 @@
 | 詳細なインストール手順 | [`tech-admin/02_install-detail.md`](tech-admin/02_install-detail.md) |
 | セキュリティ仕様を確認する | [`tech-admin/03_security.md`](tech-admin/03_security.md) |
 | 設定のカスタマイズ | [`tech-admin/04_customization.md`](tech-admin/04_customization.md) |
+| 法令・コンプライアンス対応 | [`tech-admin/05_compliance.md`](tech-admin/05_compliance.md) |
 
 ---
 

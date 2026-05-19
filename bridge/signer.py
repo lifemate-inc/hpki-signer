@@ -333,8 +333,9 @@ class SigningSession:
             issr = str(cert.issuer.human_friendly)
             exp  = getattr(cert, 'not_valid_after_utc', None) or cert.not_valid_after
             # SHA1 フィンガープリントを計算してログ出力（どの証明書が使われているか確認用）
+            # 暗号用途ではなく証明書識別子としての利用なので、usedforsecurity=False を明示
             import hashlib
-            sha1 = hashlib.sha1(cert.dump()).hexdigest().upper()
+            sha1 = hashlib.sha1(cert.dump(), usedforsecurity=False).hexdigest().upper()
             print(f'[bridge] 署名証明書 SHA1: {sha1}', flush=True)
             print(f'[bridge] 署名証明書 Subject: {subj}', flush=True)
             print(f'[bridge] 署名証明書 Issuer:  {issr}', flush=True)
@@ -449,8 +450,11 @@ class SigningSession:
         from asn1crypto import crl as asn1crl
         crl_urls = self._get_crl_urls()
         for crl_url in crl_urls:
+            # 上で http スキームを検証済みなので urllib への投入は安全
+            if not crl_url.startswith(('http://', 'https://')):
+                continue
             try:
-                crl_data = urllib.request.urlopen(crl_url, timeout=10).read()
+                crl_data = urllib.request.urlopen(crl_url, timeout=10).read()  # nosec B310
                 crls.append(asn1crl.CertificateList.load(crl_data))
                 print(f'[bridge] CRL取得: {crl_url}', flush=True)
             except Exception as e:

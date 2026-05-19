@@ -64,6 +64,31 @@ jobs:
           .\scripts\build_all.ps1 -Version "${{ steps.version.outputs.VERSION }}"
         shell: pwsh
 
+      - name: SHA256 ハッシュを生成（自動更新の検証用）
+        id: hashes
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.VERSION }}"
+          # build_payload.ps1 が出力するファイル名（v プレフィックスなし）
+          $payload = "build/payload-$v.zip"
+          $installer = "build/hpki-signer-setup-$v.exe"
+
+          # payload の SHA256 を生成（bridge.py が更新適用前に検証する）
+          if (Test-Path $payload) {
+              $h = (Get-FileHash -Algorithm SHA256 $payload).Hash.ToLower()
+              "$h  payload-$v.zip" | Set-Content "$payload.sha256" -Encoding ASCII
+              Write-Host "payload SHA256: $h"
+              echo "PAYLOAD_SHA256=$h" >> $env:GITHUB_OUTPUT
+          }
+
+          # installer の SHA256 も生成（手動検証用）
+          if (Test-Path $installer) {
+              $h = (Get-FileHash -Algorithm SHA256 $installer).Hash.ToLower()
+              "$h  hpki-signer-setup-$v.exe" | Set-Content "$installer.sha256" -Encoding ASCII
+              Write-Host "installer SHA256: $h"
+              echo "INSTALLER_SHA256=$h" >> $env:GITHUB_OUTPUT
+          }
+
       - name: GitHub Release を作成
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -76,8 +101,18 @@ jobs:
             - **新規インストール**: `hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe`
             - **手動更新（既存ユーザー）**: `payload-v${{ steps.version.outputs.VERSION }}.zip`
 
+            ### SHA256 ハッシュ（整合性検証用）
+            ```
+            installer: ${{ steps.hashes.outputs.INSTALLER_SHA256 }}
+            payload:   ${{ steps.hashes.outputs.PAYLOAD_SHA256 }}
+            ```
+
+            > 自動更新では payload の SHA256 をダウンロード前後で検証します。
+            > 一致しない場合は適用されません（改ざん検知）。
+
             ### 動作環境
             - Windows 10 / 11 (64bit)
+            - **Google Chrome または Microsoft Edge（最新版）** ※ Firefox / Safari 非対応
             - HPKIカードリーダー または マイナンバーカード対応カードリーダー
             - Adobe Acrobat Reader（署名検証用）
 
@@ -91,7 +126,9 @@ jobs:
           prerelease: false
           files: |
             build/hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe
-            build/payload-v${{ steps.version.outputs.VERSION }}.zip
+            build/hpki-signer-setup-${{ steps.version.outputs.VERSION }}.exe.sha256
+            build/payload-${{ steps.version.outputs.VERSION }}.zip
+            build/payload-${{ steps.version.outputs.VERSION }}.zip.sha256
 
       - name: 成果物をアーティファクトとして保存
         uses: actions/upload-artifact@v4

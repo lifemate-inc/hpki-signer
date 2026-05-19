@@ -3,12 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 🔒 connect-src は port_range (14733-14737) すべてを許可 -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'none';
            script-src 'self' 'unsafe-inline';
            style-src  'self' 'unsafe-inline';
            img-src    'self' data:;
-           connect-src 'self' http://127.0.0.1:14733 http://localhost:14733;
+           connect-src 'self'
+             http://127.0.0.1:14733 http://localhost:14733
+             http://127.0.0.1:14734 http://localhost:14734
+             http://127.0.0.1:14735 http://localhost:14735
+             http://127.0.0.1:14736 http://localhost:14736
+             http://127.0.0.1:14737 http://localhost:14737;
            form-action 'none';
            frame-ancestors 'none';
            base-uri 'none'">

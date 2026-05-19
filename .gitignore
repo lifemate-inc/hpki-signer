@@ -30,6 +30,23 @@ bridge/bridge.log
 bridge/setup.log
 *.log
 
+# ── bridge 起動時に自動生成されるトークン・テンプ ──
+.shutdown_token
+_pending/
+_backup/
+
+# ── pytest ──
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Claude Code / Claude Preview ローカル設定 ──
+.claude/
+
+# ── Playwright のブラウザバイナリは PC ローカル ──
+# (pip install playwright + playwright install chromium で再取得)
+
+
 # ── 旧 VBS（installer に置き換え済み）──
 *.vbs
 
