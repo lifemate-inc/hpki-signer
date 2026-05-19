@@ -1,158 +1,192 @@
-# 開発・運用ガイドライン
+# Contributing to HPKI 電子署名ツール
 
-このリポジトリにコミットする前に必ず確認してください。
+本プロジェクトへの貢献にご関心をお寄せいただきありがとうございます。
 
----
-
-## 🔒 公開してはいけないもの
-
-このリポジトリは **public** で、GitHub Pages 経由でも一部が配信されます。
-**絶対にコミットしてはいけない**ものは以下：
-
-### ❌ 個人情報を含むファイル
-
-- 個人の署名証明書（`*signing*.cer`, `*signer*.cer`）
-- テスト用 P12（`test_cert.p12` 等）
-- 個人の PIN・パスフレーズを含むファイル
-- 顧客の氏名・連絡先を含むファイル
-
-### ❌ 社内運用ドキュメント
-
-- 営業担当向けマニュアル（`docs/manuals/sales/`）
-- フォロー担当向けマニュアル（`docs/manuals/support/`）
-- 用語使い分けガイド（`docs/manuals/glossary.md`）
-- 配布先データベース・顧客リスト
-
-これらは別の **private リポジトリ** または社内ストレージで管理してください。
-
-### ❌ 認証情報
-
-- API キー
-- パスワード
-- アクセストークン
-- 環境変数ファイル（`.env`）
-
-### ❌ ベンダー配布ソフト
-
-- HPKI クライアントソフト DLL
-- JPKI 利用者ソフト DLL
-- カードリーダードライバ
-
-これらは再配布禁止です。
+このガイドは、バグ報告・機能要望・コード変更・ドキュメント改善などをご提案いただく方向けの案内です。
 
 ---
 
-## ✅ 公開して問題ないもの
+## 🐛 バグ報告・機能要望
 
-- ソースコード（bridge, docs, installer, scripts）
-- 公開 CA 証明書（J-LIS, MEDIS, MHLW のルート）
-- 配布先向けマニュアル（`docs/manuals/end-user/`, `docs/manuals/tech-admin/`）
-- インストールガイド・同意書テンプレート
-- README, LICENSE, CHANGELOG
+[GitHub Issues](https://github.com/lifemate-inc/hpki-signer/issues) よりお寄せください。
 
----
+### バグ報告に含めていただきたい情報
 
-## コミット前のチェックリスト
+- **症状**: 何が起きたか
+- **再現手順**: どう操作したら発生するか
+- **環境**: Windows のバージョン、カード種別、本ツールのバージョン
+- **診断情報**: アプリ画面下の「📋 診断情報をコピー」で取得できる情報
+- **期待動作**: 本来どうあるべきか
 
-```
-[ ] git status で意図しないファイルが含まれていないか
-[ ] git diff で個人情報が混ざっていないか
-[ ] テストデータに本物の患者情報がないか
-[ ] PIN・パスワードが含まれていないか
-[ ] スクリーンショットに個人名が映っていないか
-```
+### 機能要望のテンプレート
+
+- **背景**: どんな業務シーンで困っているか
+- **提案する機能**: どのような機能があると助かるか
+- **代替案**: 現状でどう対処しているか
 
 ---
 
-## 内部マニュアルの管理場所
+## 🔐 セキュリティに関する報告
 
-社内向けマニュアル（営業・サポート）は以下のいずれかで管理：
+**脆弱性は公開 Issue では報告しないでください**（攻撃者に情報が渡るリスクがあります）。
 
-| 選択肢 | メリット | デメリット |
-|--------|--------|-----------|
-| **private GitHub リポジトリ**（推奨） | Git でバージョン管理、変更履歴明確 | GitHub の料金がかかる場合あり |
-| **Google Drive / Notion** | 編集が簡単、誰でも更新可能 | バージョン管理が弱い |
-| **デスクトップローカル** | オフラインで開ける | 個別の PC に閉じる |
+代わりに以下を利用してください：
 
-現在の社内マニュアルは：
-- ローカルに保管: `~/Desktop/hpki-signer-internal-manuals-YYYY-MM-DD/`
-- 将来的に private repo へ移行予定
+- 🔒 [GitHub Security Advisories](https://github.com/lifemate-inc/hpki-signer/security/advisories)（推奨）
+
+報告者と開発元の間で連携し、修正完了後に公開します（責任ある開示）。
 
 ---
 
-## 誤って公開してしまったとき
+## 💻 開発環境のセットアップ
 
-万が一、社内資料を public にコミットしてしまったら：
+### 必要なツール
 
-### 即座にやること
+| ツール | バージョン | 用途 |
+|-------|----------|------|
+| Python | 3.13+ | bridge 本体 |
+| Go | 1.21+ | launcher.exe ビルド |
+| Inno Setup | 6 | インストーラ生成 |
+| Git | 最新 | バージョン管理 |
 
-1. **慌てない**（パニックで誤った操作をすると傷口を広げる）
-2. ローカルでファイルを削除（または別フォルダへ）
-3. `git rm` して commit + push（**最新ブランチからは消える**）
-4. ただし**履歴には残る**ので、次に進む
-
-### 履歴からも完全削除
+### 初期セットアップ
 
 ```powershell
-# git-filter-repo をインストール（初回のみ）
-pip install git-filter-repo
+# リポジトリをクローン
+git clone https://github.com/lifemate-inc/hpki-signer.git
+cd hpki-signer
 
-# バックアップを取る
-git clone --mirror . ../backup-$(Get-Date -Format yyyyMMdd).git
+# bridge の依存をインストール
+cd bridge
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
 
-# 該当パスを全履歴から削除
-python -m git_filter_repo --path docs/manuals/sales/ --invert-paths --force
-
-# remote を再登録（filter-repo が外す）
-git remote add origin https://github.com/lifemate-inc/hpki-signer.git
-
-# force push
-git push origin main --force
+# 起動して動作確認
+python bridge.py
 ```
 
-### GitHub の reflog からも完全削除
+ブラウザで <http://localhost:14733> を開けば動作確認できます。
 
-force push 後、GitHub のサーバ側でも 60-90 日間はコミットハッシュ経由でアクセス可能：
-
-- **方法 A**: GC を待つ（60-90日で自動消去）
-- **方法 B**: GitHub Support に削除依頼
-  - <https://support.github.com/contact/private-information>
-  - 「Sensitive information was force-pushed but commit hashes still accessible」と説明
-- **方法 C**: リポジトリ削除→作り直し（即時・確実だが Releases/Pages/Star がリセット）
-
----
-
-## リリースワークフロー
-
-新バージョンをリリースする手順：
+### ビルド
 
 ```powershell
-# 1. ローカルでビルド
+# 配布パッケージ（payload + installer）を生成
 .\scripts\build_all.ps1 -Version "1.1.X"
+```
 
-# 2. 動作確認
-& "$env:LOCALAPPDATA\HpkiSigner\launcher.exe" --check
+`build/` に `payload-vX.Y.Z.zip` と `hpki-signer-setup-X.Y.Z.exe` が生成されます。
 
-# 3. コミット
-git add -A
-git commit -m "release: v1.1.X"
-git push
+---
 
-# 4. タグ + GitHub Release 作成
-git tag v1.1.X
-git push origin v1.1.X
-gh release create v1.1.X build\hpki-signer-setup-1.1.X.exe build\payload-1.1.X.zip `
-  --title "HPKI電子署名ツール v1.1.X" --notes "..."
+## 📝 Pull Request の出し方
+
+1. このリポジトリを fork します
+2. ブランチを切ります（例: `fix/card-detection`, `feat/multi-tsa`）
+3. 変更をコミットします
+   - コミットメッセージは [Conventional Commits](https://www.conventionalcommits.org/ja/v1.0.0/) 形式が望ましい
+   - 例: `feat(signer): add support for PSS padding`
+4. fork したリポジトリに push します
+5. このリポジトリへ Pull Request を作成します
+
+### PR レビューで確認される観点
+
+- ✅ 既存のコードスタイルと一貫しているか
+- ✅ セキュリティに影響する変更が含まれていないか
+- ✅ ユーザーへの影響が大きい変更には説明があるか
+- ✅ ドキュメントが更新されているか
+
+---
+
+## ⚠️ コミットすべきでないもの
+
+以下のファイルは `.gitignore` で除外されていますが、念のためご確認ください：
+
+| 種類 | 例 |
+|------|-----|
+| 個人の署名証明書 | `*_signing*.cer`, `*_personal*.cer` |
+| テスト用秘密鍵 | `*.p12`, `*.pfx`, `*.pem`, `*.key` |
+| ベンダー配布 DLL | `*.dll`（再配布制限あり） |
+| 認証情報 | `.env`, APIキー、トークン |
+| ログ・キャッシュ | `*.log`, `__pycache__/` |
+| ビルド成果物 | `build/`, `*.zip` |
+
+PR を出される前に `git status` でご確認ください。
+
+---
+
+## 🎨 コードスタイル
+
+### Python（bridge / signer）
+
+- [PEP 8](https://peps.python.org/pep-0008/) に準拠
+- 関数・変数名は snake_case
+- クラス名は PascalCase
+- 日本語コメント可（ユーザー向け業務ロジックには日本語が望ましい）
+
+### Go（launcher）
+
+- `gofmt` でフォーマット
+- Goの標準的な慣習に従う
+
+### JavaScript / HTML / CSS
+
+- インデントは 2 スペース
+- セミコロンはなしでも可（一貫していれば）
+- ES2020+ 機能 OK
+
+### コミットメッセージ
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+Co-Authored-By: ...
+```
+
+`type`:
+- `feat`: 新機能
+- `fix`: バグ修正
+- `docs`: ドキュメント
+- `chore`: その他（ビルド・設定など）
+- `refactor`: リファクタリング
+- `test`: テスト追加
+- `perf`: パフォーマンス改善
+
+---
+
+## 🧪 テストとビルド
+
+PR を出す前に、ローカルで動作確認をお願いします：
+
+```powershell
+# launcher のセルフチェック
+& "installer\launcher\launcher.exe" --check
+
+# 全体ビルドが通るか
+.\scripts\build_all.ps1 -Version "0.0.0-test"
 ```
 
 ---
 
-## 緊急時の連絡先
+## 📜 ライセンス
 
-- セキュリティ事案: security@(...)
-- 開発担当: developer@(...)
-- 営業・サポート責任者: (...)
+このプロジェクトは [MIT License](LICENSE) の下で公開されています。
+あなたが貢献されるコードも、同ライセンスの下で公開されることに同意したものとみなします。
 
 ---
 
-最終更新: 2026-05-19
+## 🙏 行動規範
+
+すべての貢献者に対して、敬意と建設的な姿勢でのコミュニケーションをお願いします。
+
+医療・介護現場で実際に使われるツールですので、現場の声を尊重した提案を歓迎します。
+
+---
+
+## 📬 ご連絡先
+
+- 一般的な質問・バグ報告: [GitHub Issues](https://github.com/lifemate-inc/hpki-signer/issues)
+- セキュリティ報告: [GitHub Security Advisories](https://github.com/lifemate-inc/hpki-signer/security/advisories)
+- その他: 配布元の担当窓口（配布物の同意書に記載）
