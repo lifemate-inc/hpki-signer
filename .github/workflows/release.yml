@@ -90,7 +90,7 @@ jobs:
           }
 
       - name: GitHub Release を作成
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: "HPKI電子署名ツール v${{ steps.version.outputs.VERSION }}"
