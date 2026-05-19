@@ -7,6 +7,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: Public Beta](https://img.shields.io/badge/Status-Public%20Beta-orange.svg)](https://github.com/lifemate-inc/hpki-signer/releases)
 
+![メイン画面](docs/screenshots/05-main-ui.png)
+
 ---
 
 ## ✨ 特徴
@@ -34,6 +36,7 @@
 | 項目 | 内容 |
 |------|------|
 | OS | Windows 10 / 11（64bit） |
+| **ブラウザ** | **Google Chrome または Microsoft Edge（最新版）** ※ Firefox / Safari は非対応（フォルダ選択 API 未実装のため） |
 | ICカードリーダー | PC/SC 規格対応品（推奨：サンワサプライ ADR-MNICU2） |
 | ICカード | HPKIカード または マイナンバーカード |
 | カードリーダードライバ | 各メーカーの公式ダウンロードページから取得 |
@@ -52,6 +55,12 @@
 3. デスクトップの **「HPKI電子署名ツール」** をダブルクリック
 4. ブラウザが開く → カード種別を選び PIN を入力
 5. 署名したいフォルダを選択 → 「署名を開始する」
+
+### 画面の流れ
+
+| カード選択・PIN入力 | 署名処理中 | 完了画面 |
+|--------------------|------------|----------|
+| ![メイン画面](docs/screenshots/05-main-ui.png) | ![処理中](docs/screenshots/40-signing-progress.png) | ![完了](docs/screenshots/30-done-success.png) |
 
 詳しい手順は [インストールガイド](docs/install-guide.md) をご覧ください。
 
@@ -153,6 +162,8 @@ python bridge.py
 
 商用・非商用を問わずご利用・改変・再配布が可能ですが、**動作・適合性・安全性は保証されません**。
 電子署名の法的有効性はカード発行元の運用ガイドラインに準じます。
+
+同梱しているサードパーティライブラリのライセンス表記は [NOTICE.md](NOTICE.md) をご覧ください。
 
 ---
 

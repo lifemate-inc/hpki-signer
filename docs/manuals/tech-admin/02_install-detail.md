@@ -13,7 +13,7 @@
 | 空き容量 | 200 MB 以上 |
 | インターネット | インストール時のみ必要（30 MB DL） |
 | ICカードリーダー | PC/SC 規格対応（推奨：ADR-MNICU2） |
-| ブラウザ | Chrome / Edge / Firefox（最新版） |
+| ブラウザ | **Chrome または Edge（最新版）** ※ Firefox / Safari は フォルダ選択 API（`showDirectoryPicker`）非対応のため使用できません |
 
 ---
 
