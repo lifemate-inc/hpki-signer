@@ -29,6 +29,9 @@ jobs:
       - name: ツールをインストール
         run: |
           python -m pip install --upgrade pip
+          # bridge の本体依存をインストール (tests/ が bridge.py を import するため必要)
+          pip install -r bridge/requirements.txt
+          # 開発ツール
           pip install ruff bandit pytest pytest-cov
 
       - name: ruff (lint)
@@ -55,8 +58,13 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: go vet
+      - name: go vet (Windows ターゲット)
+        # launcher.go は syscall.SysProcAttr.HideWindow など Windows 固有 API を使う
+        # そのため Linux ホストで vet するときも GOOS=windows を明示
         working-directory: installer/launcher
+        env:
+          GOOS: windows
+          GOARCH: amd64
         run: go vet ./...
 
       - name: go build (Windows クロスコンパイル可能性チェック)
