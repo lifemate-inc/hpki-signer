@@ -567,7 +567,7 @@
   <!-- マイナンバーカード向け手順 -->
   <div id="s4-jpki" style="display:none">
     <div id="s4-jpki-identify" class="badge badge-green" style="margin-bottom:16px; display:none">
-      <!-- 動的に挿入: あなたのカードは CAX が発行 -->
+      <!-- 動的に挿入: お使いのカードは CAX が発行 -->
     </div>
 
     <!-- 推奨: Windows証明書ストア経由 -->
@@ -995,7 +995,7 @@ async function renderAcrobatStep() {
       if (data.found) {
         el.style.display = '';
         el.innerHTML =
-          `🔍 <strong>あなたのカードの親証明書を特定しました：</strong><br>` +
+          `🔍 <strong>お使いのカードの親証明書を特定しました：</strong><br>` +
           `<code>${data.filename}</code>（${data.label}）<br>` +
           `<span style="font-size:.8rem">バンドル（.p7b）には3世代すべて含まれているので、そのままインポートしてOKです。</span>`;
       }

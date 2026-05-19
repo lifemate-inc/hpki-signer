@@ -48,8 +48,8 @@ def _ensure_test_cert() -> None:
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME,           'HPKI テスト署名者'),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME,     'テスト訪問看護ステーション'),
+        x509.NameAttribute(NameOID.COMMON_NAME,           'HPKI Test Signer'),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME,     'HPKI Signer Test Organization'),
         x509.NameAttribute(NameOID.COUNTRY_NAME,          'JP'),
     ])
     now  = datetime.datetime.now(datetime.timezone.utc)

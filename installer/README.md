@@ -59,7 +59,7 @@ go build -ldflags "-s -w -H windowsgui" -o launcher.exe .
 2. GitHub に新しいリリースを作成（タグ `v1.1.0` など）
 3. `payload-v1.1.0.zip` を Release Assets にアップロード
 4. `hpki-signer-setup-1.1.0.exe` も Assets にアップロード
-5. 看護師さんには `hpki-signer-setup-1.1.0.exe` の URL を送るだけ
+5. 配布先には `hpki-signer-setup-1.1.0.exe` の URL を案内
 
 ## インストーラの動作仕様
 

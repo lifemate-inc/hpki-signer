@@ -37,7 +37,7 @@ null
 # 自社ドメインのコピーから利用したい場合
 https://signer.your-company.com
 
-# 別のステーション用に複数の URL を許可する場合
+# 別の事業所用に複数の URL を許可する場合
 https://anothersite.example.com
 ```
 
@@ -160,7 +160,7 @@ Windows 10 32bit、メモリ 4GB、HDD の PC：
 
 ### ケース 3: マスデプロイ（IT 部門が一括設定）
 
-複数のステーションに同じ設定を配る場合：
+複数の事業所に同じ設定を配る場合：
 
 ```powershell
 # 1. launcher.json を作成
@@ -209,7 +209,7 @@ bridge/
 ```
 
 ただし、`signer.py` のコードを変更しないと **CMS に埋め込まれない**ため、
-高度な作業が必要。必要なら開発担当に相談。
+高度な作業が必要です。必要に応じて GitHub Issues でご相談ください。
 
 ---
 
