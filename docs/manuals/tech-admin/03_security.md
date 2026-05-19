@@ -1,6 +1,6 @@
-# 技術責任者向け：セキュリティ仕様の詳細
+# セキュリティ仕様の詳細
 
-このツールを導入するにあたって、IT部門としてレビューすべきセキュリティ仕様の全容です。
+本ツールを導入するにあたって、IT 部門でレビューいただくためのセキュリティ仕様の全容です。
 
 ---
 
@@ -211,7 +211,7 @@ PDF 署名時に使う CA 証明書は **bridge ディレクトリに同梱**：
 
 ### 監査ログのレビュー
 
-担当 IT 部門で定期的に：
+IT 部門にて定期的に：
 
 ```powershell
 # 異常な API アクセスがないか
@@ -248,7 +248,7 @@ Get-Content "$env:LOCALAPPDATA\HpkiSigner\bridge\bridge.log" |
 
 ### 4. 自前ビルドが可能
 
-不安なら、ご自身でビルドして配布できます：
+配布物への懸念がある場合は、ご自身でビルドして配布できます：
 
 ```powershell
 git clone https://github.com/lifemate-inc/hpki-signer.git
@@ -262,23 +262,24 @@ cd hpki-signer
 
 ### 報告窓口
 
-- メール: security@(...)
-- GitHub Security Advisories: <https://github.com/lifemate-inc/hpki-signer/security/advisories>
+セキュリティに関する脆弱性をご発見の方は、**GitHub Security Advisories** よりご報告ください。
+公開リポジトリの Issues での開示は避けていただけますと幸いです（攻撃者に情報が渡るリスクを下げるため）。
+
+- 🔐 [Security Advisories（推奨）](https://github.com/lifemate-inc/hpki-signer/security/advisories)
+- 🛡️ 配布元の担当窓口へ直接メール（配布時にご案内されたアドレス）
 
 ### 開示ポリシー
 
-- 修正完了まで非公開
-- 修正後 30日経過してから公開
+- ご報告から修正完了まで非公開
+- 修正版リリース後 30 日経過してから詳細を公開
 
 ### 緊急対応フロー
 
-1. 報告 → 24時間以内に受領確認
+1. ご報告 → 24時間以内に受領確認
 2. 検証 → 48時間以内
 3. 修正版開発
 4. 緊急リリース
 5. 全配布先へ通知
-
-詳細は [../../TROUBLESHOOTING.md](../../TROUBLESHOOTING.md) の「セキュリティ重大欠陥時のプレイブック」を参照。
 
 ---
 
