@@ -1,0 +1,49 @@
+# Dependabot 設定
+# 依存ライブラリの脆弱性・更新情報を自動検知し、PR で通知してくれる。
+# 詳細: https://docs.github.com/en/code-security/dependabot
+
+version: 2
+updates:
+  # Python 依存（bridge）
+  - package-ecosystem: "pip"
+    directory: "/bridge"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(bridge)"
+
+  # Go 依存（launcher）
+  - package-ecosystem: "gomod"
+    directory: "/installer/launcher"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "deps(launcher)"
+
+  # GitHub Actions 自身
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(ci)"

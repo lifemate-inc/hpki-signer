@@ -1,0 +1,91 @@
+# ════════════════════════════════════════════════════════════════════
+#  CI — main / PR で実行される静的解析・テスト
+# ════════════════════════════════════════════════════════════════════
+#
+# Lint / 静的セキュリティ解析 / 単体テストをトリガー。
+# release.yml はタグ push 時のみなので、CI はここで日常的に動かす。
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ─── Python: lint + bandit + tests ───────────────────────────────
+  python-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: ツールをインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff bandit pytest pytest-cov
+
+      - name: ruff (lint)
+        run: |
+          ruff check bridge/ --output-format=github || true   # 警告のみ・失敗させない（既存コード尊重）
+
+      - name: bandit (セキュリティ静的解析)
+        # 中〜高リスクのみ報告。低リスクは無視（コメント等の誤検知が多いため）
+        run: |
+          bandit -r bridge/ -ll -ii --skip B404,B603,B607 --exclude bridge/venv,bridge/__pycache__
+
+      - name: pytest (テスト)
+        run: |
+          if [ -d tests ]; then pytest tests/ -v --tb=short; else echo "no tests/ dir"; fi
+
+  # ─── Go: vet + build check ──────────────────────────────────────
+  go-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Go セットアップ
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: go vet
+        working-directory: installer/launcher
+        run: go vet ./...
+
+      - name: go build (Windows クロスコンパイル可能性チェック)
+        working-directory: installer/launcher
+        env:
+          GOOS: windows
+          GOARCH: amd64
+        run: go build -o /tmp/launcher-check.exe .
+
+  # ─── ドキュメント整合性チェック ─────────────────────────────────
+  docs-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 内部用語が公開ドキュメントに残っていないかチェック
+        run: |
+          # 「私たち」「弊社」「あなた」「ステーション」「看護師さん」が docs/ にあったら警告
+          set +e
+          FORBIDDEN_TERMS='私たち|弊社|当社|あなた|ステーション|看護師さん|営業担当|フォロー担当'
+          MATCHES=$(grep -rE "$FORBIDDEN_TERMS" docs/ README.md CONTRIBUTING.md 2>/dev/null || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::warning::公開ドキュメントに内部用語が含まれている可能性があります:"
+            echo "$MATCHES"
+            # 警告のみ（失敗させない）。手動レビューで判断
+          fi
+
+      - name: バージョン整合性チェック
+        run: |
+          # README に v1.X.X 表記があれば、最新リリースと照らし合わせるなど可能
+          # 当面は何もしない（雛形のみ）
+          echo "version cross-check (placeholder)"
