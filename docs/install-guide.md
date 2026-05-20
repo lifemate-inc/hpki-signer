@@ -52,12 +52,17 @@
 1. `hpki-signer-setup-X.X.X.exe` をダブルクリック
 
 2. **「Windowsによって PC が保護されました」**という警告が表示される場合があります
+
+   ![SmartScreen 警告](screenshots/02-installer-smartscreen.png)
+
    - 「**詳細情報**」をクリック
    - 「**実行**」をクリック
 
    > 新しく公開されたソフトウェアによく表示される警告です。本ツールはオープンソースとして公開しており、ソースコードも GitHub で公開されています。
 
 3. インストールウィザードに従って「次へ」をクリック
+
+   ![Inno Setup ウィザード](screenshots/03-installer-wizard.png)
 
 4. インストール先：**自動で適切な場所**に配置されます（変更不要）
 
@@ -134,6 +139,9 @@
 1. セットアップ画面の「📥 Windows 証明書ストアにインストール」をクリック
 2. 完了したら Acrobat を開く
 3. メニュー「編集」→「環境設定」→「署名」
+
+   ![Acrobat 環境設定 - 署名](screenshots/61-acrobat-trust-setting.png)
+
 4. 「確認」の「詳細...」ボタン
 5. 「Windows 統合」セクションで以下に**両方**チェック：
    - ☑ 署名の検証時に、Windows 証明書ストアでのすべてのルート証明書を信頼する
@@ -160,6 +168,8 @@
 
 4. 「**フォルダを選択**」で署名したい PDF のあるフォルダを指定
 
+   ![フォルダ選択ダイアログ](screenshots/08-folder-pick.png)
+
 5. 「**署名を開始する**」をクリック
 
    ![署名処理中](screenshots/40-signing-progress.png)
@@ -167,6 +177,10 @@
 6. 一括署名が完了
 
    ![完了画面](screenshots/30-done-success.png)
+
+7. **Acrobat Reader で開いて検証** — 緑のチェックマークで「署名済みであり、すべての署名が有効です」と表示されたら成功
+
+   ![Acrobat 検証画面](screenshots/60-acrobat-verified.png)
 
 ---
 

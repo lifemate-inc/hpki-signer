@@ -32,36 +32,38 @@
 | `11-setup-environment.png` | セットアップウィザード ステップ2: 環境確認 |
 | `20-security-page.png` | セキュリティの仕組みページ全景 |
 
-## まだ撮影できていない画像（手動撮影が必要）
+### Windows / Acrobat 統合
 
-これらは実環境（Windows のインストーラ起動・実カード署名・Acrobat 表示）でしか撮影できません:
-
-| ファイル名（予定） | 内容 |
-|------------------|------|
-| `02-installer-smartscreen.png` | SmartScreen 警告 →「詳細情報」→「実行」の流れ |
-| `03-installer-wizard.png` | Inno Setup のインストール画面 |
-| `08-folder-pick.png` | フォルダ選択ダイアログ（Windows のファイラー） |
-| `60-acrobat-verified.png` | Acrobat Reader で署名済 PDF を開いた緑チェック画面 |
-| `61-acrobat-trust-setting.png` | 環境設定 → 署名 → Windows 統合のチェック画面 |
-
-撮影手順:
-1. PC で実際にインストール → 各画面で `Win + Shift + S` でスクリーンショット
-2. 個人情報を含まないダミーデータで撮影
-3. このフォルダに上記のファイル名で保存
+| ファイル名 | 内容 |
+|-----------|------|
+| `02-installer-smartscreen.png` | SmartScreen 警告（MOTW 付き未署名 exe 起動時） |
+| `03-installer-wizard.png` | Inno Setup ウィザード welcome 画面 |
+| `08-folder-pick.png` | Windows ネイティブのフォルダ選択ダイアログ |
+| `60-acrobat-verified.png` | Acrobat Reader で署名済 PDF を開いた「すべての署名が有効」表示 |
+| `61-acrobat-trust-setting.png` | Acrobat 環境設定 → 署名 → 検証 セクション |
 
 ## 自動撮影スクリプト
 
-`docs/screenshots/*.png` の大半は以下で再生成可能:
+ブラウザ UI のスクショ (00-50 番台) は以下で再生成可能:
 
 ```powershell
 # bridge を起動した状態で実行
 .\bridge\venv\Scripts\python.exe scripts\capture_screenshots.py
 ```
 
+Windows / Acrobat 統合のスクショ (60-61 番台) は別スクリプト:
+
+```powershell
+# Acrobat で署名済 PDF を開いた状態で実行
+.\bridge\venv\Scripts\python.exe scripts\capture_acrobat_trust.py
+# その後 PowerShell で screenshot_helper を直接呼ぶ
+.\scripts\screenshot_helper.ps1 -OutPath docs\screenshots\60-acrobat-verified.png -WindowTitle "Acrobat"
+```
+
 playwright が未インストールならインストール:
 
 ```powershell
-.\bridge\venv\Scripts\python.exe -m pip install playwright
+.\bridge\venv\Scripts\python.exe -m pip install playwright pywinauto Pillow
 .\bridge\venv\Scripts\python.exe -m playwright install chromium
 ```
 
