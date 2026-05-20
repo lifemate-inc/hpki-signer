@@ -112,19 +112,19 @@ launcher.exe は終了
 
 ```powershell
 # サイレントモード（ウィザード非表示・全自動）
-hpki-signer-setup-1.1.6.exe /SILENT /SUPPRESSMSGBOXES /NORESTART
+hpki-signer-setup-1.1.7.exe /SILENT /SUPPRESSMSGBOXES /NORESTART
 
 # 完全サイレント（プログレスバーも非表示）
-hpki-signer-setup-1.1.6.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+hpki-signer-setup-1.1.7.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 
 # インストール先を指定
-hpki-signer-setup-1.1.6.exe /SILENT /DIR="C:\Tools\HpkiSigner"
+hpki-signer-setup-1.1.7.exe /SILENT /DIR="C:\Tools\HpkiSigner"
 
 # デスクトップショートカット作成しない
-hpki-signer-setup-1.1.6.exe /SILENT /TASKS="!desktopicon"
+hpki-signer-setup-1.1.7.exe /SILENT /TASKS="!desktopicon"
 
 # ログ取得
-hpki-signer-setup-1.1.6.exe /SILENT /LOG="C:\install.log"
+hpki-signer-setup-1.1.7.exe /SILENT /LOG="C:\install.log"
 ```
 
 **注意**: SILENT モードでは Inno Setup の DownloadPage が表示されないため、
@@ -250,7 +250,7 @@ Invoke-WebRequest "http://localhost:14733/api/health" | ConvertFrom-Json
 期待される応答：
 ```json
 {
-  "version": "1.1.6",
+  "version": "1.1.7",
   "mockMode": false,
   "availableLibs": [
     {"label": "HPKIカード", "type": "hpki", "path": "..."},
@@ -269,6 +269,10 @@ Invoke-WebRequest "http://localhost:14733/api/health" | ConvertFrom-Json
 
 MessageBox で診断結果が表示されます。
 
+![Self-check 結果](../../screenshots/12-launcher-selfcheck.png)
+
+すべての項目が ✅ になっていれば正常です。
+
 ---
 
-最終更新: 2026-05-18
+最終更新: 2026-05-20 (v1.1.7 対応)

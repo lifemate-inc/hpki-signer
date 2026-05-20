@@ -270,7 +270,7 @@ cd hpki-signer
 公開リポジトリの Issues での開示は避けていただけますと幸いです（攻撃者に情報が渡るリスクを下げるため）。
 
 - 🔐 [Security Advisories（推奨）](https://github.com/lifemate-inc/hpki-signer/security/advisories)
-- 🛡️ 配布元の担当窓口へ直接メール（配布時にご案内されたアドレス）
+- 📧 配布元の担当窓口: **michael@life-mate.jp**（件名先頭に「【セキュリティ】」を付記）
 
 ### 開示ポリシー
 
