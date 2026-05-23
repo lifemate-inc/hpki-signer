@@ -1,5 +1,5 @@
 """
-v1.1.7 が動いているローカルブリッジに対して、UI スモークテスト。
+v1.1.8 が動いているローカルブリッジに対して、UI スモークテスト。
 """
 import asyncio
 from pathlib import Path
@@ -19,15 +19,15 @@ async def main():
         await page.goto(f'{BRIDGE}/api/health')
         body = await page.text_content('body')
         print(body[:300])
-        assert '"version":"1.1.7"' in body, f'v1.1.7 ではない: {body[:100]}'
+        assert '"version":"1.1.8"' in body, f'v1.1.8 ではない: {body[:100]}'
         assert '"mockMode":false' in body, 'mockMode が True'
-        print('  OK version=1.1.7, mock=False')
+        print('  OK version=1.1.8, mock=False')
 
         print('--- /api/diagnostics ---')
         await page.goto(f'{BRIDGE}/api/diagnostics')
         diag = await page.text_content('body')
         assert '"pin"' not in diag.lower() or '[REDACTED]' in diag, 'diagnostics に PIN らしき文字列'
-        assert '1.1.7' in diag, 'バージョンが含まれない'
+        assert '1.1.8' in diag, 'バージョンが含まれない'
         print('  OK バージョン記録、PIN なし')
 
         print('--- メイン UI ---')
@@ -46,10 +46,10 @@ async def main():
         # version 表示確認
         ver = await page.text_content('#versionLabel')
         print(f'  versionLabel: {ver}')
-        assert '1.1.7' in ver, f'UI のバージョン表示が違う: {ver}'
+        assert '1.1.8' in ver, f'UI のバージョン表示が違う: {ver}'
 
         # 撮影
-        await page.screenshot(path=str(OUT / '_smoke_v117.png'))
+        await page.screenshot(path=str(OUT / '_smoke_v118.png'))
         print('  smoke screenshot saved')
 
         await browser.close()

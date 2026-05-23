@@ -10,7 +10,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 OUT_DIR = Path.home() / 'Desktop'
-VERSION = '1.1.7'
+VERSION = '1.1.8'
 
 # (URL, 出力ファイル名)
 TARGETS = [

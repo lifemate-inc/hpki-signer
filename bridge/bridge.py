@@ -254,7 +254,7 @@ def _get_version() -> str:
     vfile = BRIDGE_DIR.parent / 'VERSION.txt'
     if vfile.exists():
         return vfile.read_text(encoding='utf-8').strip()
-    return '1.1.7'   # 開発時のフォールバック (実配布物では VERSION.txt が同梱される)
+    return '1.1.8'   # 開発時のフォールバック (実配布物では VERSION.txt が同梱される)
 
 VERSION = _get_version()
 # GitHub リポジトリ（リリースAPI参照先）— allowed_origins.txt と同じ場所で変更可能

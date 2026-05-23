@@ -26,11 +26,11 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --green:    #2a7dd4;
-  --green-dk: #1a5fab;
-  --green-lt: #eff6ff;
-  --green-bd: #93c5fd;
-  --teal:     #3b82f6;
+  --green:    #163d7a;
+  --green-dk: #0d2952;
+  --green-lt: #eef2fb;
+  --green-bd: #94a3d4;
+  --teal:     #1f4f95;
   --red:      #e05c5c;
   --red-lt:   #fff4f4;
   --amber:    #f59e0b;
@@ -50,14 +50,14 @@
 
 body{
   font-family:var(--font);
-  background:linear-gradient(160deg, #e8f0ff 0%, #f0f5ff 60%, #e6f4ff 100%);
+  background:#f1f5fb;
   min-height:100vh;
   color:var(--gray-900);
 }
 
 /* ── ヘッダー ─────────────────────────────────────────────────── */
 header{
-  background:linear-gradient(135deg, #163d7a 0%, #2a7dd4 100%);
+  background:#163d7a;
   color:#fff;
   padding:0 24px;
   height:64px;
@@ -102,7 +102,7 @@ header{
 
 /* ── 未接続カード ────────────────────────────────────────────── */
 #disconnCard{
-  background:linear-gradient(135deg,#fff9f0,#fff5e8);
+  background:#fff9f0;
   border:2px solid #fcd9a0;
   text-align:center;
   padding:32px 24px;
@@ -144,7 +144,7 @@ header{
   cursor:pointer;
   transition:border-color .2s,background .2s;
 }
-.folder-display:hover{border-color:var(--green);background:#dbeafe}
+.folder-display:hover{border-color:var(--green);background:#dde4f3}
 .folder-icon{font-size:2rem;flex-shrink:0}
 .folder-info{flex:1;min-width:0}
 .folder-name{
@@ -170,7 +170,7 @@ header{
 .card-pick-btn:hover{border-color:var(--green);background:var(--green-lt)}
 .card-pick-btn.selected{
   border-color:var(--green);background:var(--green-lt);
-  box-shadow:0 0 0 3px rgba(42,125,212,.15);
+  box-shadow:0 0 0 3px rgba(22,61,122,.15);
 }
 .card-pick-icon{font-size:1.8rem;display:block;margin-bottom:6px}
 .card-pick-label{
@@ -199,7 +199,7 @@ header{
 .pin-input:focus{
   outline:none;
   border-color:var(--green);
-  box-shadow:0 0 0 4px rgba(42,157,114,.12);
+  box-shadow:0 0 0 4px rgba(22,61,122,.12);
   background:#fff;
 }
 .pin-toggle{
@@ -212,22 +212,22 @@ header{
 /* ── 署名ボタン ──────────────────────────────────────────────── */
 .btn-sign{
   width:100%;padding:20px;
-  background:linear-gradient(135deg, #2a7dd4, #1a5fab);
+  background:#163d7a;
   color:#fff;font-size:1.15rem;font-weight:bold;
   font-family:var(--font);letter-spacing:.06em;
   border:none;border-radius:14px;cursor:pointer;
-  box-shadow:0 4px 16px rgba(42,125,212,.35);
+  box-shadow:0 4px 16px rgba(22,61,122,.35);
   transition:all .2s;
   display:flex;align-items:center;justify-content:center;gap:10px;
 }
 .btn-sign:hover:not(:disabled){
-  background:linear-gradient(135deg,#4a8fe8,#2a7dd4);
-  box-shadow:0 6px 20px rgba(42,125,212,.45);
+  background:#1f4f95;
+  box-shadow:0 6px 20px rgba(22,61,122,.45);
   transform:translateY(-1px);
 }
-.btn-sign:active:not(:disabled){transform:translateY(0)}
+.btn-sign:active:not(:disabled){transform:translateY(0);background:#0d2952}
 .btn-sign:disabled{
-  background:linear-gradient(135deg,#9ca3af,#6b7280);
+  background:#9ca3af;
   box-shadow:none;cursor:not-allowed;
 }
 .btn-sign-icon{font-size:1.4rem}
@@ -244,7 +244,7 @@ header{
 #signingOverlay.show{display:flex}
 .signing-spinner{
   width:64px;height:64px;
-  border:5px solid #93c5fd;
+  border:5px solid #cdd5e8;
   border-top-color:var(--green);
   border-radius:50%;
   animation:spin .8s linear infinite;
@@ -256,7 +256,7 @@ header{
   width:240px;height:8px;background:var(--gray-200);border-radius:8px;overflow:hidden;
 }
 .signing-bar{
-  height:100%;background:linear-gradient(90deg,var(--green),#7dd3fc);
+  height:100%;background:var(--green);
   border-radius:8px;transition:width .4s ease;width:0%;
 }
 

@@ -15,7 +15,7 @@
 #define MyAppShortName       "HpkiSigner"
 ; MyAppVersion は /DMyAppVersion=X.Y.Z で上書き可能（CIで使用）
 #ifndef MyAppVersion
-  #define MyAppVersion       "1.1.7"
+  #define MyAppVersion       "1.1.8"
 #endif
 #define MyAppPublisher       "lifemate-inc"
 #define MyAppURL             "https://lifemate-inc.github.io/hpki-signer/"
